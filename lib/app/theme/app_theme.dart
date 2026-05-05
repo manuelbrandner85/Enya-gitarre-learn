@@ -282,9 +282,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.outline),
         ),
-        textStyle: TextStyle(
+        textStyle: GoogleFonts.inter(
           color: AppColors.textPrimary,
-          fontFamily: 'Inter',
           fontSize: 12,
         ),
       ),
@@ -292,13 +291,11 @@ class AppTheme {
         labelColor: AppColors.primary,
         unselectedLabelColor: AppColors.textTertiary,
         indicatorColor: AppColors.primary,
-        labelStyle: const TextStyle(
-          fontFamily: 'Poppins',
+        labelStyle: GoogleFonts.poppins(
           fontSize: 13,
           fontWeight: FontWeight.w600,
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontFamily: 'Poppins',
+        unselectedLabelStyle: GoogleFonts.poppins(
           fontSize: 13,
           fontWeight: FontWeight.w400,
         ),
@@ -308,14 +305,12 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         iconColor: AppColors.textSecondary,
         textColor: AppColors.textPrimary,
-        subtitleTextStyle: TextStyle(
+        subtitleTextStyle: GoogleFonts.inter(
           color: AppColors.textSecondary,
-          fontFamily: 'Inter',
           fontSize: 13,
         ),
-        titleTextStyle: TextStyle(
+        titleTextStyle: GoogleFonts.inter(
           color: AppColors.textPrimary,
-          fontFamily: 'Inter',
           fontSize: 15,
           fontWeight: FontWeight.w500,
         ),
@@ -359,7 +354,6 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: const Color(0xFFF8F8F8),
-      fontFamily: 'Poppins',
       textTheme: AppTypography.lightTextTheme,
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
