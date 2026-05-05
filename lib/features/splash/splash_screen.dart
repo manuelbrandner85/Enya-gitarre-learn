@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -21,18 +22,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(milliseconds: 2200));
+    // Minimum splash display time avoids flicker on fast loads.
+    await Future.delayed(const Duration(milliseconds: 1500));
 
     if (!mounted) return;
 
     final onboardingComplete = ref.read(onboardingCompletedProvider);
+    final user = ref.read(currentSupabaseUserProvider);
 
     if (!mounted) return;
 
-    if (onboardingComplete) {
-      context.go('/home/lessons');
-    } else {
+    if (user == null) {
+      context.go('/auth');
+    } else if (!onboardingComplete) {
       context.go('/onboarding');
+    } else {
+      context.go('/home/lessons');
     }
   }
 
@@ -70,7 +75,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
             // App name
             Text(
-              'E-Gitarre Leicht',
+              AppLocalizations.of(context)?.appTitle ?? 'E-Gitarre Leicht',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w700,
@@ -106,6 +111,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             )
                 .animate(delay: 700.ms)
                 .fadeIn(duration: 400.ms),
+
+            const SizedBox(height: 16),
+
+            Text(
+              AppLocalizations.of(context)?.splashLoading ?? 'Lade…',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textTertiary,
+                  ),
+            ).animate(delay: 800.ms).fadeIn(),
           ],
         ),
       ),

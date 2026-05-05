@@ -5,7 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../app/theme/colors.dart';
+import '../../core/curriculum/curriculum.dart';
 import '../../core/models/lesson.dart';
+import '../../core/practice/practice_session_tracker.dart';
+import '../../core/providers/app_providers.dart';
+import 'controllers/lesson_controller.dart';
+import 'widgets/real_time_feedback_widget.dart';
 
 class LessonScreen extends ConsumerStatefulWidget {
   final String moduleId;
@@ -23,27 +28,39 @@ class LessonScreen extends ConsumerStatefulWidget {
 
 class _LessonScreenState extends ConsumerState<LessonScreen> {
   int _currentStep = 0;
-  double _accuracy = 0.0;
   bool _isExerciseComplete = false;
-  bool _isListening = false;
 
-  // Simulate lesson data for the selected lesson
-  late final Lesson _lesson;
+  late final LessonKey _lessonKey;
+  late final Lesson? _lesson;
 
   @override
   void initState() {
     super.initState();
     WakelockPlus.enable();
-    _lesson = _buildMockLesson();
+    _lessonKey = LessonKey(
+      moduleId: widget.moduleId,
+      lessonId: widget.lessonId,
+    );
+    _lesson = Curriculum.findLesson(widget.moduleId, widget.lessonId) ??
+        _fallbackLesson();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(practiceSessionTrackerProvider).start(
+            moduleId: widget.moduleId,
+            lessonId: widget.lessonId,
+          );
+    });
   }
 
   @override
   void dispose() {
     WakelockPlus.disable();
+    // Best-effort end practice session.
+    ref.read(practiceSessionTrackerProvider).end();
     super.dispose();
   }
 
-  Lesson _buildMockLesson() {
+  Lesson _fallbackLesson() {
     return const Lesson(
       id: 'lesson-01',
       moduleId: 'module-01',
@@ -64,20 +81,27 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     );
   }
 
-  void _completeExercise() {
-    setState(() {
-      _accuracy = 0.85;
-      _isExerciseComplete = true;
-    });
-  }
+  void _finishLesson(double accuracy, int xpReward, String title) async {
+    // Trigger persistence + sync via the controller.
+    final controller =
+        ref.read(lessonControllerProvider(_lessonKey).notifier);
+    await controller.completeLesson();
 
-  void _finishLesson() {
+    // Update XP and streak (which will sync to Supabase).
+    final profile = ref.read(currentUserProfileProvider.notifier);
+    await profile.addXp(xpReward);
+    await profile.incrementStreak();
+
+    // Inform practice tracker of XP earned.
+    ref.read(practiceSessionTrackerProvider).addXp(xpReward);
+
+    if (!mounted) return;
     context.go(
       '/lesson-complete',
       extra: {
-        'lessonTitle': _lesson.title,
-        'xpEarned': _lesson.xpReward,
-        'accuracy': _accuracy,
+        'lessonTitle': title,
+        'xpEarned': xpReward,
+        'accuracy': accuracy,
         'newAchievements': <String>[],
       },
     );
@@ -85,13 +109,35 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final steps = _lesson.instructions;
+    final lesson = _lesson!;
+    final state = ref.watch(lessonControllerProvider(_lessonKey));
+    final controller = ref.read(lessonControllerProvider(_lessonKey).notifier);
+
+    // Auto-complete the exercise UI when the controller has captured enough.
+    if (state.attempts.isNotEmpty &&
+        state.attempts.last.exerciseIndex == state.currentExerciseIndex &&
+        !_isExerciseComplete) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _isExerciseComplete = true);
+      });
+    }
+
+    final steps = lesson.instructions;
     final isLastStep = _currentStep >= steps.length - 1;
+    final accuracy = state.currentAccuracy > 0
+        ? state.currentAccuracy
+        : state.bestAccuracy;
+
+    // Mark activity for the practice session tracker on every rebuild that
+    // occurs from a pitch update.
+    if (state.livePitch != null) {
+      ref.read(practiceSessionTrackerProvider).markActivity();
+    }
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       appBar: AppBar(
-        title: Text(_lesson.title),
+        title: Text(lesson.title),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => _showExitDialog(),
@@ -114,20 +160,17 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
       ),
       body: Column(
         children: [
-          // Progress bar
           LinearProgressIndicator(
-            value: (_currentStep + 1) / steps.length,
+            value: steps.isEmpty ? 0 : (_currentStep + 1) / steps.length,
             backgroundColor: AppColors.outline,
             valueColor: const AlwaysStoppedAnimation(AppColors.primary),
           ),
-
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Preset indicator
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
@@ -144,7 +187,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                             size: 14, color: AppColors.presetClean),
                         const SizedBox(width: 6),
                         Text(
-                          _lesson.presetRequired.displayName,
+                          lesson.presetRequired.displayName,
                           style: TextStyle(
                             color: AppColors.presetClean,
                             fontSize: 12,
@@ -155,47 +198,38 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // Current instruction
-                  _InstructionCard(
-                    step: _currentStep + 1,
-                    total: steps.length,
-                    instruction: steps[_currentStep],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Exercise area (simplified for lesson display)
-                  if (_currentStep == steps.length - 1 && !_isExerciseComplete)
-                    _ExerciseArea(
-                      isListening: _isListening,
-                      onStartListening: () {
-                        setState(() => _isListening = true);
-                        // Simulate completion after 3 seconds
-                        Future.delayed(const Duration(seconds: 3), () {
-                          if (mounted) _completeExercise();
-                        });
-                      },
+                  if (steps.isNotEmpty)
+                    _InstructionCard(
+                      step: _currentStep + 1,
+                      total: steps.length,
+                      instruction: steps[_currentStep],
                     ),
-
-                  if (_isExerciseComplete)
-                    _AccuracyResult(accuracy: _accuracy),
+                  const SizedBox(height: 24),
+                  if ((isLastStep || steps.isEmpty) && !_isExerciseComplete)
+                    _ExerciseArea(
+                      isListening: state.isListening,
+                      detectionsCaptured: state.detectionsCaptured,
+                      detectionsRequired:
+                          state.currentExercise?.repetitionsRequired ?? 4,
+                      livePitch: state.livePitch,
+                      onStartListening: () => controller.startListening(),
+                      onStopListening: () => controller.stopListening(),
+                    ),
+                  if (_isExerciseComplete) _AccuracyResult(accuracy: accuracy),
                 ],
               ),
             ),
           ),
-
-          // Bottom navigation
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  if (_currentStep > 0)
+                  if (_currentStep > 0 && !_isExerciseComplete)
                     OutlinedButton(
                       onPressed: () {
+                        controller.stopListening();
                         setState(() => _currentStep--);
                       },
                       child: const Text('Zurück'),
@@ -203,22 +237,29 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                   const Spacer(),
                   ElevatedButton(
                     onPressed: _isExerciseComplete
-                        ? _finishLesson
-                        : isLastStep && !_isListening
-                            ? () => setState(() => _isListening = false)
+                        ? () => _finishLesson(
+                              accuracy,
+                              lesson.xpReward,
+                              lesson.title,
+                            )
+                        : isLastStep
+                            ? () {
+                                if (state.isListening) {
+                                  controller.stopListening();
+                                } else {
+                                  controller.startListening();
+                                }
+                              }
                             : () {
                                 if (_currentStep < steps.length - 1) {
-                                  setState(() {
-                                    _currentStep++;
-                                    _isListening = false;
-                                  });
+                                  setState(() => _currentStep++);
                                 }
                               },
                     child: Text(
                       _isExerciseComplete
-                          ? 'Abschließen 🎉'
+                          ? 'Abschließen'
                           : isLastStep
-                              ? 'Üben'
+                              ? (state.isListening ? 'Stopp' : 'Üben')
                               : 'Weiter',
                     ),
                   ),
@@ -246,6 +287,8 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
+              ref.read(lessonControllerProvider(_lessonKey).notifier)
+                  .stopListening();
               context.go('/home/lessons');
             },
             child: Text('Beenden', style: TextStyle(color: AppColors.error)),
@@ -302,11 +345,19 @@ class _InstructionCard extends StatelessWidget {
 
 class _ExerciseArea extends StatelessWidget {
   final bool isListening;
+  final int detectionsCaptured;
+  final int detectionsRequired;
+  final dynamic livePitch;
   final VoidCallback onStartListening;
+  final VoidCallback onStopListening;
 
   const _ExerciseArea({
     required this.isListening,
+    required this.detectionsCaptured,
+    required this.detectionsRequired,
+    required this.livePitch,
     required this.onStartListening,
+    required this.onStopListening,
   });
 
   @override
@@ -336,7 +387,7 @@ class _ExerciseArea extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Tippe auf den Button und spiele die E-Note',
+              'Tippe auf den Button und spiele die Note',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
@@ -349,20 +400,27 @@ class _ExerciseArea extends StatelessWidget {
               label: const Text('Aufnahme starten'),
             ),
           ] else ...[
-            const SizedBox(
-              width: 64,
-              height: 64,
-              child: CircularProgressIndicator(
-                strokeWidth: 4,
-                color: AppColors.primary,
-              ),
-            ),
+            RealTimeFeedbackWidget(result: livePitch),
             const SizedBox(height: 16),
             Text(
-              'Spiele jetzt...',
+              'Treffer: $detectionsCaptured / $detectionsRequired',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: AppColors.primary,
                   ),
+            ),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: detectionsRequired == 0
+                  ? 0
+                  : (detectionsCaptured / detectionsRequired).clamp(0.0, 1.0),
+              backgroundColor: AppColors.outline,
+              valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+            ),
+            const SizedBox(height: 16),
+            TextButton.icon(
+              onPressed: onStopListening,
+              icon: const Icon(Icons.stop),
+              label: const Text('Stopp'),
             ),
           ],
         ],
@@ -378,7 +436,13 @@ class _AccuracyResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stars = accuracy >= 0.98 ? 3 : accuracy >= 0.85 ? 2 : accuracy >= 0.70 ? 1 : 0;
+    final stars = accuracy >= 0.98
+        ? 3
+        : accuracy >= 0.85
+            ? 2
+            : accuracy >= 0.70
+                ? 1
+                : 0;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -409,7 +473,11 @@ class _AccuracyResult extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            accuracy >= 0.85 ? 'Ausgezeichnet!' : accuracy >= 0.70 ? 'Gut gemacht!' : 'Weiter üben!',
+            accuracy >= 0.85
+                ? 'Ausgezeichnet!'
+                : accuracy >= 0.70
+                    ? 'Gut gemacht!'
+                    : 'Weiter üben!',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppColors.textSecondary,
                 ),

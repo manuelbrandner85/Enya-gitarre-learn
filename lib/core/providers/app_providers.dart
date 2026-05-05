@@ -14,10 +14,12 @@ import 'package:drift/drift.dart' show Value;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
+import '../gamification/achievement_manager.dart';
 import '../models/achievement.dart';
 import '../models/lesson.dart';
 import '../models/user_profile.dart';
 import '../supabase/supabase_sync_service.dart';
+import '../updates/update_check_service.dart';
 import '../utils/constants.dart';
 
 // =============================================
@@ -106,10 +108,20 @@ class UserProfileNotifier
     extends StateNotifier<AsyncValue<UserProfile?>> {
   final AppDatabase _db;
   final SharedPreferences _prefs;
+  final Ref _ref;
 
-  UserProfileNotifier(this._db, this._prefs)
+  UserProfileNotifier(this._db, this._prefs, this._ref)
       : super(const AsyncValue.loading()) {
     load();
+  }
+
+  Future<void> _syncProfile(UserProfile profile) async {
+    try {
+      final sync = _ref.read(supabaseSyncProvider);
+      await sync.upsertProfile(profile);
+    } catch (e) {
+      debugPrint('UserProfileNotifier sync failed: $e');
+    }
   }
 
   /// Loads the current user profile from the DB or creates a default one.
@@ -147,6 +159,7 @@ class UserProfileNotifier
     );
     await _persist(updated);
     state = AsyncValue.data(updated);
+    await _syncProfile(updated);
   }
 
   Future<void> incrementStreak() async {
@@ -163,6 +176,7 @@ class UserProfileNotifier
     );
     await _persist(updated);
     state = AsyncValue.data(updated);
+    await _syncProfile(updated);
   }
 
   Future<void> unlockPreset(GuitarPreset preset) async {
@@ -255,7 +269,7 @@ final currentUserProfileProvider = StateNotifierProvider<UserProfileNotifier,
     AsyncValue<UserProfile?>>((ref) {
   final db = ref.watch(databaseProvider);
   final prefs = ref.watch(sharedPreferencesProvider);
-  return UserProfileNotifier(db, prefs);
+  return UserProfileNotifier(db, prefs, ref);
 });
 
 // =============================================
@@ -512,4 +526,113 @@ final authStateStreamProvider = StreamProvider<AuthState>((ref) {
 final currentSupabaseUserProvider = Provider<User?>((ref) {
   ref.watch(authStateStreamProvider);
   return ref.watch(supabaseClientProvider).auth.currentUser;
+});
+
+// =============================================
+// RECENT ACHIEVEMENT (UI banner)
+// =============================================
+
+/// Holds the most recently auto-unlocked achievement so a global
+/// SnackBar/Banner can surface it to the user.
+final recentAchievementProvider = StateProvider<Achievement?>((ref) => null);
+
+// =============================================
+// ACHIEVEMENT AUTO-WATCHER
+// =============================================
+
+/// Listens to profile changes and automatically unlocks any achievements whose
+/// conditions are met. Read this provider once at app startup so its listener
+/// stays active for the lifetime of the container.
+final achievementWatcherProvider = Provider<void>((ref) {
+  ref.listen<AsyncValue<UserProfile?>>(
+    currentUserProfileProvider,
+    (previous, next) async {
+      final profile = next.value;
+      if (profile == null) return;
+
+      final newlyUnlocked =
+          AchievementManager.checkAllAchievements(profile, session: null);
+      if (newlyUnlocked.isEmpty) return;
+
+      final achievementsNotifier = ref.read(achievementsProvider.notifier);
+      final sync = ref.read(supabaseSyncProvider);
+
+      for (final achievement in newlyUnlocked) {
+        if (achievementsNotifier.isUnlocked(achievement.key)) continue;
+        final added = await achievementsNotifier.unlock(achievement.key);
+        if (!added) continue;
+
+        try {
+          await sync.recordAchievement(achievement.key);
+        } catch (e) {
+          debugPrint('recordAchievement failed: $e');
+        }
+
+        // Surface only the most recent unlock.
+        ref.read(recentAchievementProvider.notifier).state = achievement;
+      }
+    },
+    fireImmediately: true,
+  );
+});
+
+// =============================================
+// STREAK VERIFICATION ON APP START
+// =============================================
+
+/// Verifies and corrects the streak when the profile is first loaded after
+/// app start. If the user missed >1 day, the streak resets to 0.
+/// Runs exactly once per signed-in profile.
+final streakVerifierProvider = Provider<void>((ref) {
+  bool didRun = false;
+  ref.listen<AsyncValue<UserProfile?>>(
+    currentUserProfileProvider,
+    (previous, next) async {
+      final profile = next.value;
+      if (profile == null || didRun) return;
+      didRun = true;
+
+      final last = profile.lastPracticeDate;
+      if (last == null || profile.currentStreak == 0) return;
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final lastDay = DateTime(last.year, last.month, last.day);
+      final daysDiff = today.difference(lastDay).inDays;
+
+      if (daysDiff <= 1) return; // streak still alive
+
+      // Streak broken — reset.
+      final reset = profile.copyWith(
+        currentStreak: 0,
+        updatedAt: DateTime.now(),
+      );
+      try {
+        await ref
+            .read(currentUserProfileProvider.notifier)
+            .updateProfile(reset);
+      } catch (e) {
+        debugPrint('streak verify updateProfile failed: $e');
+      }
+      try {
+        await ref.read(supabaseSyncProvider).upsertProfile(reset);
+      } catch (e) {
+        debugPrint('streak verify upsertProfile failed: $e');
+      }
+    },
+    fireImmediately: true,
+  );
+});
+
+// =============================================
+// UPDATE CHECK
+// =============================================
+
+final updateCheckServiceProvider = Provider<UpdateCheckService>((ref) {
+  return UpdateCheckService(ref.watch(supabaseClientProvider));
+});
+
+final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
+  final service = ref.watch(updateCheckServiceProvider);
+  return service.checkForUpdate();
 });

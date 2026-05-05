@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../app/theme/colors.dart';
+import '../../../core/providers/app_providers.dart';
 import '../../../core/utils/constants.dart';
 
 class ProfileSetupPage extends StatelessWidget {
@@ -58,6 +59,31 @@ class _ProfileSetupPageContentState
       await prefs.setBool(AppConstants.prefKeyOnboardingComplete, true);
       await prefs.setString('username', _nameController.text.trim());
       await prefs.setString('experience', _selectedExperience);
+
+      // Update local profile (DB) and mirror to Supabase.
+      final profileNotifier =
+          ref.read(currentUserProfileProvider.notifier);
+      final current = ref.read(currentUserProfileProvider).value;
+      if (current != null) {
+        final updated = current.copyWith(
+          username: _nameController.text.trim(),
+          onboardingComplete: true,
+          isGuest: false,
+          updatedAt: DateTime.now(),
+        );
+        await profileNotifier.updateProfile(updated);
+
+        try {
+          await ref.read(supabaseSyncProvider).upsertProfile(updated);
+        } catch (e) {
+          debugPrint('Supabase upsertProfile failed: $e');
+        }
+      }
+
+      // Mark onboarding complete in the dedicated provider (router watches it).
+      await ref
+          .read(onboardingCompletedProvider.notifier)
+          .setCompleted(true);
 
       if (mounted) {
         widget.onFinish();
