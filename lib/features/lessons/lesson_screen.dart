@@ -463,14 +463,8 @@ class _AccuracyResult extends StatelessWidget {
               );
             }),
           ),
-          const SizedBox(height: 12),
-          Text(
-            '${(accuracy * 100).round()}% Genauigkeit',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-          ),
+          const SizedBox(height: 16),
+          _AccuracyGauge(accuracy: accuracy),
           const SizedBox(height: 4),
           Text(
             accuracy >= 0.85
@@ -486,4 +480,100 @@ class _AccuracyResult extends StatelessWidget {
       ),
     ).animate().fadeIn().scale(begin: const Offset(0.8, 0.8));
   }
+}
+
+class _AccuracyGauge extends StatelessWidget {
+  final double accuracy; // 0.0 to 1.0
+
+  const _AccuracyGauge({required this.accuracy});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 120,
+      height: 80,
+      child: CustomPaint(
+        painter: _GaugePainter(accuracy: accuracy.clamp(0.0, 1.0)),
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 32),
+            child: Text(
+              '${(accuracy * 100).round()}%',
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GaugePainter extends CustomPainter {
+  final double accuracy; // 0.0 to 1.0
+
+  _GaugePainter({required this.accuracy});
+
+  Color _gaugeColor(double value) {
+    if (value <= 0.4) {
+      // Red
+      return const Color(0xFFCF6679);
+    } else if (value <= 0.7) {
+      // Interpolate red → yellow
+      final t = (value - 0.4) / 0.3;
+      return Color.lerp(
+        const Color(0xFFCF6679),
+        const Color(0xFFFFC107),
+        t,
+      )!;
+    } else {
+      // Interpolate yellow → green
+      final t = (value - 0.7) / 0.3;
+      return Color.lerp(
+        const Color(0xFFFFC107),
+        const Color(0xFF4CAF50),
+        t,
+      )!;
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height - 4;
+    final radius = size.width / 2 - 8;
+
+    final trackPaint = Paint()
+      ..color = Colors.white12
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round;
+
+    final progressPaint = Paint()
+      ..color = _gaugeColor(accuracy)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round;
+
+    const startAngle = 3.14159; // π (left)
+    const sweepAngle = 3.14159; // π (half circle)
+
+    final rect = Rect.fromCircle(
+        center: Offset(cx, cy), radius: radius);
+
+    // Track (full half-circle)
+    canvas.drawArc(rect, startAngle, sweepAngle, false, trackPaint);
+
+    // Progress arc
+    canvas.drawArc(
+        rect, startAngle, sweepAngle * accuracy, false, progressPaint);
+  }
+
+  @override
+  bool shouldRepaint(_GaugePainter oldDelegate) =>
+      oldDelegate.accuracy != accuracy;
 }

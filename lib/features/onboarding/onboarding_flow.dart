@@ -18,7 +18,10 @@ class OnboardingFlow extends ConsumerStatefulWidget {
 class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  static const int _totalPages = 4;
+
+  /// 3 intro slideshow pages + 4 existing profile-setup pages = 7 total.
+  static const int _introPages = 3;
+  static const int _totalPages = 7; // 3 intro + 4 existing
 
   @override
   void dispose() {
@@ -46,6 +49,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
     }
   }
 
+  bool get _isLastPage => _currentPage == _totalPages - 1;
+  bool get _isIntroPage => _currentPage < _introPages;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,7 +59,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       body: SafeArea(
         child: Column(
           children: [
-            // Progress indicator
+            // Top bar: back button + dot indicators + skip button
             Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -74,11 +80,11 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                         _totalPages,
                         (index) => AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: index == _currentPage ? 24 : 8,
-                          height: 8,
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: index == _currentPage ? 20 : 6,
+                          height: 6,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(3),
                             color: index == _currentPage
                                 ? AppColors.primary
                                 : AppColors.outline,
@@ -107,6 +113,32 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                   setState(() => _currentPage = index);
                 },
                 children: [
+                  // ── Intro slideshow pages (0, 1, 2) ──
+                  _IntroSlidePage(
+                    icon: Icons.music_note,
+                    title: 'Lerne E-Gitarre',
+                    subtitle:
+                        'Schritt für Schritt mit der Enya XMARI Smart Guitar',
+                    buttonLabel: _isLastPage ? 'Loslegen' : 'Weiter',
+                    onNext: _nextPage,
+                  ),
+                  _IntroSlidePage(
+                    icon: Icons.emoji_events,
+                    title: 'Sammle XP & Achievements',
+                    subtitle: 'Bleib motiviert durch Gamification',
+                    buttonLabel: _isLastPage ? 'Loslegen' : 'Weiter',
+                    onNext: _nextPage,
+                  ),
+                  _IntroSlidePage(
+                    icon: Icons.bluetooth,
+                    title: 'Verbinde deine Gitarre',
+                    subtitle:
+                        'Echtzeit-Feedback direkt vom Instrument',
+                    buttonLabel: _isLastPage ? 'Loslegen' : 'Weiter',
+                    onNext: _nextPage,
+                  ),
+
+                  // ── Existing profile-setup pages (3, 4, 5, 6) ──
                   WelcomePageContent(onNext: _nextPage),
                   GuitarSetupPageContent(onNext: _nextPage),
                   OnboardingTunerPageContent(onNext: _nextPage),
@@ -118,6 +150,81 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A single intro slideshow page with an icon, title, subtitle and a button.
+class _IntroSlidePage extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String buttonLabel;
+  final VoidCallback onNext;
+
+  const _IntroSlidePage({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.buttonLabel,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 140,
+            height: 140,
+            decoration: BoxDecoration(
+              gradient: AppColors.primaryGradient,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.4),
+                  blurRadius: 40,
+                  spreadRadius: 10,
+                ),
+              ],
+            ),
+            child: Icon(
+              icon,
+              size: 80,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 48),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: AppColors.textSecondary,
+                  height: 1.6,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 64),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: onNext,
+              child: Text(buttonLabel),
+            ),
+          ),
+        ],
       ),
     );
   }

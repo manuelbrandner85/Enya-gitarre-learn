@@ -3,21 +3,21 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Primary - Spotify Green
-  static const Color primary = Color(0xFF1DB954);
-  static const Color primaryDark = Color(0xFF148A3D);
-  static const Color primaryLight = Color(0xFF4DCF7A);
-  static const Color primaryMuted = Color(0xFF1DB95430);
+  // Primary - Violet
+  static const Color primary = Color(0xFF7C3AED);
+  static const Color primaryDark = Color(0xFF5B21B6);
+  static const Color primaryLight = Color(0xFFA78BFA);
+  static const Color primaryMuted = Color(0x307C3AED);
 
-  // Secondary - Orange
-  static const Color secondary = Color(0xFFFF6B35);
-  static const Color secondaryDark = Color(0xFFCC4A18);
-  static const Color secondaryLight = Color(0xFFFF9166);
+  // Secondary - Electric Blue
+  static const Color secondary = Color(0xFF3B82F6);
+  static const Color secondaryDark = Color(0xFF1D4ED8);
+  static const Color secondaryLight = Color(0xFF60A5FA);
 
-  // Accent - Electric Blue
-  static const Color accent = Color(0xFF00B4D8);
-  static const Color accentDark = Color(0xFF0077B6);
-  static const Color accentLight = Color(0xFF90E0EF);
+  // Accent - Indigo
+  static const Color accent = Color(0xFF818CF8);
+  static const Color accentDark = Color(0xFF4F46E5);
+  static const Color accentLight = Color(0xFFC7D2FE);
 
   // Background - Dark
   static const Color backgroundDark = Color(0xFF121212);
@@ -53,9 +53,9 @@ class AppColors {
   static const Color fretboardFret = Color(0xFFB8B8B8);
   static const Color fretboardInlay = Color(0xFFE8E8E0);
   static const Color stringColor = Color(0xFFC0C0C0);
-  static const Color openStringColor = Color(0xFF1DB954);
+  static const Color openStringColor = Color(0xFF7C3AED);
   static const Color mutedStringColor = Color(0xFFCF6679);
-  static const Color pressedNoteColor = Color(0xFF1DB954);
+  static const Color pressedNoteColor = Color(0xFF7C3AED);
 
   // Preset Colors
   static const Color presetClean = Color(0xFF2196F3);
@@ -75,11 +75,11 @@ class AppColors {
   // XP / Gamification
   static const Color xpColor = Color(0xFFFFD700);
   static const Color streakColor = Color(0xFFFF6B35);
-  static const Color achievementColor = Color(0xFF1DB954);
+  static const Color achievementColor = Color(0xFF7C3AED);
 
   // Chart Colors
   static const List<Color> chartColors = [
-    Color(0xFF1DB954),
+    Color(0xFF7C3AED),
     Color(0xFF00B4D8),
     Color(0xFFFF6B35),
     Color(0xFFFFD700),
@@ -89,7 +89,7 @@ class AppColors {
 
   // Gradient Presets
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF1DB954), Color(0xFF148A3D)],
+    colors: [Color(0xFF7C3AED), Color(0xFF3B82F6)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -107,7 +107,7 @@ class AppColors {
   );
 
   static const LinearGradient electricGradient = LinearGradient(
-    colors: [Color(0xFF00B4D8), Color(0xFF9C27B0)],
+    colors: [Color(0xFF3B82F6), Color(0xFF7C3AED)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
