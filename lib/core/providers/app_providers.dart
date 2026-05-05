@@ -642,11 +642,10 @@ final updateCheckServiceProvider = Provider<UpdateCheckService>((ref) {
 // NOTIFICATIONS
 // =============================================
 
-/// Stub notification service provider.
-/// Replace [NotificationService] with a real implementation once
-/// `flutter_local_notifications` is added to pubspec.yaml.
 final notificationServiceProvider = Provider<NotificationService>((ref) {
-  return NotificationService();
+  final svc = NotificationService();
+  svc.initialize();
+  return svc;
 });
 
 final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {

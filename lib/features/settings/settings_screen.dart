@@ -9,6 +9,8 @@ import '../../app/app.dart';
 import '../../app/theme/colors.dart';
 import '../../core/audio/pitch_detector.dart';
 import '../../core/bluetooth/bluetooth_service.dart';
+import '../../core/notifications/notification_service.dart';
+import '../../core/providers/app_providers.dart';
 import '../../core/utils/constants.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -124,9 +126,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: 'Tägliche Erinnerung zum Üben',
             trailing: Switch(
               value: _notifications,
-              onChanged: (v) {
+              onChanged: (v) async {
                 setState(() => _notifications = v);
-                _saveSetting('notifications', v);
+                await _saveSetting('notifications', v);
+                final svc = ref.read(notificationServiceProvider);
+                if (v) {
+                  await svc.scheduleStreakReminder();
+                } else {
+                  await svc.cancelAll();
+                }
               },
             ),
           ),
