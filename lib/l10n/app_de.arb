@@ -1,0 +1,26 @@
+{
+  "@@locale": "de",
+  "appTitle": "E-Gitarre Leicht",
+  "@appTitle": {
+    "description": "App display name"
+  },
+  "onboardingWelcome": "Willkommen bei E-Gitarre Leicht",
+  "onboardingTagline": "Für die Enya XMARI Smart Guitar",
+  "homeStreakLabel": "Tage-Streak",
+  "homeXpLabel": "XP",
+  "homeNextLessonLabel": "Nächste Lektion",
+  "tunerTitle": "Stimmgerät",
+  "tunerInTune": "Perfekt gestimmt",
+  "tunerTooLow": "Zu tief",
+  "tunerTooHigh": "Zu hoch",
+  "metronomeTitle": "Metronom",
+  "metronomeBpm": "BPM",
+  "metronomeTapTempo": "Tempo tippen",
+  "lessonComplete": "Lektion abgeschlossen!",
+  "lessonStartButton": "Lektion starten",
+  "lessonNextButton": "Weiter",
+  "settingsTitle": "Einstellungen",
+  "settingsDarkMode": "Dunkles Design",
+  "settingsLanguage": "Sprache",
+  "settingsResetProgress": "Fortschritt zurücksetzen"
+}

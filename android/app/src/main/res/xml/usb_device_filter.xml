@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- USB Audio Class devices (e.g. external audio interfaces, USB-C guitar adapters). -->
+    <usb-device class="1" />
+    <!-- Vendor-specific USB devices (some guitar/audio adapters report as vendor class). -->
+    <usb-device class="255" />
+</resources>

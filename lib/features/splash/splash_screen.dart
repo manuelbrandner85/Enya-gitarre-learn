@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/theme/colors.dart';
-import '../../core/utils/constants.dart';
+import '../../core/providers/app_providers.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -26,9 +25,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     if (!mounted) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    final onboardingComplete =
-        prefs.getBool(AppConstants.prefKeyOnboardingComplete) ?? false;
+    final onboardingComplete = ref.read(onboardingCompletedProvider);
 
     if (!mounted) return;
 

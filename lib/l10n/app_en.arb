@@ -1,0 +1,23 @@
+{
+  "@@locale": "en",
+  "appTitle": "E-Guitar Easy",
+  "onboardingWelcome": "Welcome to E-Guitar Easy",
+  "onboardingTagline": "For the Enya XMARI Smart Guitar",
+  "homeStreakLabel": "Day streak",
+  "homeXpLabel": "XP",
+  "homeNextLessonLabel": "Next lesson",
+  "tunerTitle": "Tuner",
+  "tunerInTune": "Perfectly in tune",
+  "tunerTooLow": "Too low",
+  "tunerTooHigh": "Too high",
+  "metronomeTitle": "Metronome",
+  "metronomeBpm": "BPM",
+  "metronomeTapTempo": "Tap tempo",
+  "lessonComplete": "Lesson complete!",
+  "lessonStartButton": "Start lesson",
+  "lessonNextButton": "Next",
+  "settingsTitle": "Settings",
+  "settingsDarkMode": "Dark mode",
+  "settingsLanguage": "Language",
+  "settingsResetProgress": "Reset progress"
+}

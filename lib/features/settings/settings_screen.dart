@@ -108,8 +108,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             trailing: Switch(
               value: themeMode == ThemeMode.dark,
               onChanged: (v) {
-                ref.read(themeModeProvider.notifier).state =
-                    v ? ThemeMode.dark : ThemeMode.light;
+                ref
+                    .read(themeModeProvider.notifier)
+                    .setMode(v ? ThemeMode.dark : ThemeMode.light);
               },
             ),
           ),
@@ -183,6 +184,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildProfileTile() {
+    final profileAsync = ref.watch(currentUserProfileProvider);
+    final profile = profileAsync.value;
+    final username = profile?.username ?? 'Gitarren-Neuling';
+    final level = profile?.level ?? 1;
+    final xp = profile?.totalXp ?? 0;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -203,13 +209,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Gitarren-Neuling',
+                  username,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AppColors.textPrimary,
                       ),
                 ),
                 Text(
-                  'Level 1 · 0 XP',
+                  'Level $level · $xp XP',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -278,8 +284,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _resetOnboarding() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(AppConstants.prefKeyOnboardingComplete, false);
+    await ref.read(onboardingCompletedProvider.notifier).setCompleted(false);
     if (mounted) {
       context.go('/onboarding');
     }

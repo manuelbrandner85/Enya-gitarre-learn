@@ -9,16 +9,22 @@ import '../../core/gamification/level_manager.dart';
 import '../../core/gamification/xp_system.dart';
 import '../../core/gamification/streak_tracker.dart';
 import '../../core/models/achievement.dart';
+import '../../core/providers/app_providers.dart';
 
 class ProgressDashboardScreen extends ConsumerWidget {
   const ProgressDashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Mock data for display
-    const totalXp = 0;
-    const level = 1;
-    const streak = 0;
+    final profile = ref.watch(currentUserProfileProvider).value;
+    final achievements = ref.watch(achievementsProvider);
+    final totalXp = profile?.totalXp ?? 0;
+    final level = profile?.level ?? 1;
+    final streak = profile?.currentStreak ?? 0;
+    final longestStreak = profile?.longestStreak ?? 0;
+    final totalMinutes = profile?.totalPracticeMinutes ?? 0;
+    final lessonsCompleted = profile?.totalLessonsCompleted ?? 0;
+    final modulesCompleted = profile?.totalModulesCompleted ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
@@ -41,16 +47,16 @@ class ProgressDashboardScreen extends ConsumerWidget {
           // Streak card
           _StreakCard(
             streak: streak,
-            longestStreak: 0,
+            longestStreak: longestStreak,
           ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.1),
 
           const SizedBox(height: 16),
 
           // Stats grid
           _StatsGrid(
-            totalMinutes: 0,
-            lessonsCompleted: 0,
-            modulesCompleted: 0,
+            totalMinutes: totalMinutes,
+            lessonsCompleted: lessonsCompleted,
+            modulesCompleted: modulesCompleted,
             totalNotes: 0,
           ).animate(delay: 200.ms).fadeIn(),
 
@@ -63,7 +69,7 @@ class ProgressDashboardScreen extends ConsumerWidget {
 
           // Achievements preview
           _AchievementsPreview(
-            unlockedCount: 0,
+            unlockedCount: achievements.length,
             totalCount: AchievementRegistry.allAchievements.length,
           ).animate(delay: 400.ms).fadeIn(),
 
