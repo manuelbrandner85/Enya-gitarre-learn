@@ -1,0 +1,232 @@
+import 'package:enya_gitarre_learn/core/models/exercise.dart';
+import 'package:enya_gitarre_learn/core/models/lesson.dart';
+import 'package:enya_gitarre_learn/core/models/module.dart';
+
+/// Module 12 — "Dein Weg als Gitarrist" (ab Woche 37, Schwierigkeit variabel).
+/// Alle Presets erlaubt.
+const String _moduleId = 'module-12';
+
+final List<Lesson> module12Lessons = [
+  Lesson(
+    id: 'lesson-12-1',
+    moduleId: _moduleId,
+    title: 'Song-Bibliothek Einführung',
+    description:
+        'Die Song-Bibliothek hält hunderte Songs für dich bereit — Filter nach Genre, Schwierigkeit und Stimmung.',
+    instructions: [
+      'Öffne die Song-Bibliothek in der Hauptnavigation.',
+      'Filter Songs nach deinen aktuellen Skills.',
+      'Markiere Lieblingssongs mit einem Stern.',
+      'Lade dir Songs als "Tagesziel" herunter.',
+    ],
+    exercises: [
+      Exercise(
+        id: 'ex-12-1-1',
+        lessonId: 'lesson-12-1',
+        type: ExerciseType.chord,
+        instructions: 'Spiele einen ausgewählten Song aus der Bibliothek einmal durch.',
+        targetNoteOrChord: 'G,C,D',
+        noteSequence: ['G', 'C', 'D'],
+        bpm: 90,
+        repetitionsRequired: 1,
+        accuracyThreshold: 0.74,
+        timeoutSeconds: 240,
+        order: 1,
+      ),
+    ],
+    xpReward: 100,
+    difficulty: 5,
+    targetAccuracy: 0.74,
+    presetRequired: GuitarPreset.clean,
+    order: 1,
+    isUnlocked: true,
+    estimatedMinutes: 12,
+  ),
+  Lesson(
+    id: 'lesson-12-2',
+    moduleId: _moduleId,
+    title: 'Tägliche Challenges',
+    description:
+        'Jeden Tag eine neue Mini-Challenge — bleib am Ball und sammle XP-Boni.',
+    instructions: [
+      'Öffne den Challenge-Tab am Morgen.',
+      'Spiele die Tagesübung (5-10 Minuten).',
+      'Erhalte einen XP-Bonus bei sauberer Ausführung.',
+      'Streak-Bonus für 7 Tage in Folge.',
+    ],
+    exercises: [
+      Exercise(
+        id: 'ex-12-2-1',
+        lessonId: 'lesson-12-2',
+        type: ExerciseType.rhythm,
+        instructions: 'Bestehe die heutige Challenge mit mind. 75% Genauigkeit.',
+        targetNoteOrChord: 'A',
+        bpm: 100,
+        repetitionsRequired: 1,
+        accuracyThreshold: 0.75,
+        timeoutSeconds: 180,
+        order: 1,
+      ),
+    ],
+    xpReward: 80,
+    difficulty: 5,
+    targetAccuracy: 0.75,
+    presetRequired: GuitarPreset.overdrive,
+    order: 2,
+    estimatedMinutes: 8,
+  ),
+  Lesson(
+    id: 'lesson-12-3',
+    moduleId: _moduleId,
+    title: 'Recording Studio',
+    description:
+        'Nimm deine Performance auf, höre dir selbst zu und teile sie mit Freunden.',
+    instructions: [
+      'Öffne das Recording Studio.',
+      'Wähle einen Backing Track oder spiele frei.',
+      'Drücke Record und spiele deinen Part.',
+      'Höre dir die Aufnahme an, exportiere als MP3.',
+    ],
+    exercises: [
+      Exercise(
+        id: 'ex-12-3-1',
+        lessonId: 'lesson-12-3',
+        type: ExerciseType.scale,
+        instructions: 'Nimm eine 60-Sekunden-Performance auf und höre sie dir an.',
+        targetNoteOrChord: 'A,C,D,E,G',
+        bpm: 90,
+        repetitionsRequired: 1,
+        accuracyThreshold: 0.70,
+        timeoutSeconds: 90,
+        order: 1,
+      ),
+    ],
+    xpReward: 150,
+    difficulty: 6,
+    targetAccuracy: 0.70,
+    presetRequired: GuitarPreset.overdrive,
+    order: 3,
+    estimatedMinutes: 14,
+  ),
+  Lesson(
+    id: 'lesson-12-4',
+    moduleId: _moduleId,
+    title: 'Style Track: Blues',
+    description:
+        'Spiele einen 12-Takt-Blues in A — die Mutter aller Rock-Stile.',
+    instructions: [
+      'Akkordfolge: A7 - A7 - A7 - A7 - D7 - D7 - A7 - A7 - E7 - D7 - A7 - E7.',
+      'Shuffle-Feeling: jede Achtel hat einen "swung" Groove.',
+      'Solo über A-Blues-Tonleiter.',
+      'Genieße die rauchige Bar-Atmosphäre.',
+    ],
+    exercises: [
+      Exercise(
+        id: 'ex-12-4-1',
+        lessonId: 'lesson-12-4',
+        type: ExerciseType.chord,
+        instructions: 'Spiele die 12-Takt-Blues-Form zweimal komplett durch.',
+        targetNoteOrChord: 'A7,D7,E7',
+        noteSequence: ['A7', 'A7', 'A7', 'A7', 'D7', 'D7', 'A7', 'A7', 'E7', 'D7', 'A7', 'E7'],
+        bpm: 90,
+        repetitionsRequired: 2,
+        accuracyThreshold: 0.74,
+        timeoutSeconds: 240,
+        order: 1,
+      ),
+    ],
+    xpReward: 240,
+    difficulty: 7,
+    targetAccuracy: 0.74,
+    presetRequired: GuitarPreset.overdrive,
+    chordIds: const ['A7', 'D7', 'E7'],
+    scaleIds: const ['A-blues'],
+    order: 4,
+    estimatedMinutes: 22,
+  ),
+  Lesson(
+    id: 'lesson-12-5',
+    moduleId: _moduleId,
+    title: 'Style Track: Metal',
+    description:
+        'Heavy Drop-D-Riffs mit High-Gain — der pure Metal-Sound.',
+    instructions: [
+      'Stimme auf Drop-D.',
+      'Riff: D5 (palm-muted) - F5 - G5 - F5.',
+      'Verwende Triolen-Galopps für mehr Aggression.',
+      'Mit High-Gain klingt jede Note wie eine Wand aus Sound.',
+    ],
+    exercises: [
+      Exercise(
+        id: 'ex-12-5-1',
+        lessonId: 'lesson-12-5',
+        type: ExerciseType.rhythm,
+        instructions: 'Spiele das Metal-Riff vier Durchgänge bei 130 BPM.',
+        targetNoteOrChord: 'D5,F5,G5',
+        noteSequence: ['D5', 'F5', 'G5', 'F5'],
+        bpm: 130,
+        repetitionsRequired: 4,
+        accuracyThreshold: 0.74,
+        timeoutSeconds: 120,
+        order: 1,
+      ),
+    ],
+    xpReward: 260,
+    difficulty: 8,
+    targetAccuracy: 0.74,
+    presetRequired: GuitarPreset.highGain,
+    chordIds: const ['D5', 'F5', 'G5'],
+    order: 5,
+    estimatedMinutes: 22,
+  ),
+  Lesson(
+    id: 'lesson-12-6',
+    moduleId: _moduleId,
+    title: 'Style Track: Funk',
+    description:
+        'Funk lebt vom Groove und Sechzehntel-Stakkatos — tight, knackig und tanzbar.',
+    instructions: [
+      'Greife einen E9-Akkord (Hendrix-Akkord).',
+      'Spiele percussive Sechzehntel mit gedämpften "Ghost Notes".',
+      'Pattern: 1e+a 2e+a 3e+a 4e+a — nicht jeder Schlag klingt.',
+      'Clean-Sound und enge Verzahnung mit dem Bass.',
+    ],
+    exercises: [
+      Exercise(
+        id: 'ex-12-6-1',
+        lessonId: 'lesson-12-6',
+        type: ExerciseType.strumming,
+        instructions: 'Spiele 16 Takte Funk-Strumming auf E9 bei 100 BPM.',
+        targetNoteOrChord: 'E9',
+        bpm: 100,
+        repetitionsRequired: 16,
+        accuracyThreshold: 0.74,
+        timeoutSeconds: 120,
+        order: 1,
+      ),
+    ],
+    xpReward: 240,
+    difficulty: 7,
+    targetAccuracy: 0.74,
+    presetRequired: GuitarPreset.clean,
+    chordIds: const ['E9'],
+    order: 6,
+    estimatedMinutes: 18,
+  ),
+];
+
+final Module module12 = Module(
+  id: _moduleId,
+  moduleNumber: 12,
+  title: 'Dein Weg als Gitarrist',
+  description:
+      'Song-Bibliothek, tägliche Challenges, Recording Studio und drei Style Tracks: Blues, Metal, Funk.',
+  weekRange: 'ab Woche 37',
+  presetRequired: GuitarPreset.clean,
+  difficulty: 7,
+  isLocked: true,
+  unlockedPresets: const [],
+  learningGoals:
+      'Eigene Songs aus der Bibliothek, Daily Challenges, Recording, Stilrichtungen Blues, Metal und Funk.',
+  lessons: module12Lessons,
+);

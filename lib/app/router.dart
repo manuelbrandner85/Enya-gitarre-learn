@@ -18,6 +18,17 @@ import '../features/metronome/metronome_screen.dart';
 import '../features/progress/progress_dashboard_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/lessons/lesson_complete_screen.dart';
+import '../features/chord_library/screens/chord_library_screen.dart';
+import '../features/scale_library/screens/scale_library_screen.dart';
+import '../features/songs/screens/song_library_screen.dart';
+import '../features/songs/screens/song_practice_screen.dart';
+import '../features/recording/screens/recording_screen.dart';
+import '../features/recording/screens/recordings_list_screen.dart';
+import '../features/backing_tracks/screens/backing_tracks_screen.dart';
+import '../features/ear_training/screens/ear_training_screen.dart';
+import '../features/xmari_settings/screens/xmari_preset_manager_screen.dart';
+import '../features/progress/screens/achievements_screen.dart';
+import '../features/progress/screens/practice_diary_screen.dart';
 
 part 'router.g.dart';
 
@@ -135,6 +146,68 @@ GoRouter appRouter(Ref ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/home/chord-library',
+        name: 'chord-library',
+        builder: (context, state) => const ChordLibraryScreen(),
+      ),
+      GoRoute(
+        path: '/home/scale-library',
+        name: 'scale-library',
+        builder: (context, state) => const ScaleLibraryScreen(),
+      ),
+      GoRoute(
+        path: '/home/songs',
+        name: 'songs',
+        builder: (context, state) => const SongLibraryScreen(),
+        routes: [
+          GoRoute(
+            path: ':songId',
+            name: 'song-practice',
+            builder: (context, state) {
+              final id = state.pathParameters['songId'] ?? '';
+              return SongPracticeScreen(songId: id);
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/home/recording',
+        name: 'recording',
+        builder: (context, state) => const RecordingScreen(),
+        routes: [
+          GoRoute(
+            path: 'list',
+            name: 'recording-list',
+            builder: (context, state) => const RecordingsListScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/home/backing-tracks',
+        name: 'backing-tracks',
+        builder: (context, state) => const BackingTracksScreen(),
+      ),
+      GoRoute(
+        path: '/home/ear-training',
+        name: 'ear-training',
+        builder: (context, state) => const EarTrainingScreen(),
+      ),
+      GoRoute(
+        path: '/home/xmari-presets',
+        name: 'xmari-presets',
+        builder: (context, state) => const XmariPresetManagerScreen(),
+      ),
+      GoRoute(
+        path: '/home/progress/achievements',
+        name: 'progress-achievements',
+        builder: (context, state) => const AchievementsScreen(),
+      ),
+      GoRoute(
+        path: '/home/progress/diary',
+        name: 'progress-diary',
+        builder: (context, state) => const PracticeDiaryScreen(),
       ),
       GoRoute(
         path: '/lesson-complete',

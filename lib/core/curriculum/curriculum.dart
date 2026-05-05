@@ -5,34 +5,50 @@ import 'module_1_data.dart';
 import 'module_2_data.dart';
 import 'module_3_data.dart';
 import 'module_4_data.dart';
+import 'module_5_data.dart';
+import 'module_6_data.dart';
+import 'module_7_data.dart';
+import 'module_8_data.dart';
+import 'module_9_data.dart';
+import 'module_10_data.dart';
+import 'module_11_data.dart';
+import 'module_12_data.dart';
 
 export 'module_1_data.dart';
 export 'module_2_data.dart';
 export 'module_3_data.dart';
 export 'module_4_data.dart';
+export 'module_5_data.dart';
+export 'module_6_data.dart';
+export 'module_7_data.dart';
+export 'module_8_data.dart';
+export 'module_9_data.dart';
+export 'module_10_data.dart';
+export 'module_11_data.dart';
+export 'module_12_data.dart';
 
 /// Aggregator for the full 12-module curriculum.
 ///
-/// Modules 1-4 are fully built out with lessons in [module1Lessons] etc.
-/// Modules 5-12 fall back to the placeholder definitions that already live in
-/// [ModuleContent.allModules] in `core/models/module.dart`.
+/// All 12 modules are fully built out with detailed lesson content.
 class Curriculum {
   Curriculum._();
 
-  /// All 12 modules, with detailed content for modules 1-4 and placeholders
-  /// for modules 5-12.
+  /// All 12 modules with detailed content.
   static List<Module> get allModules {
-    final placeholders = ModuleContent.allModules;
     final result = <Module>[
       module1,
       module2,
       module3,
       module4,
+      module5,
+      module6,
+      module7,
+      module8,
+      module9,
+      module10,
+      module11,
+      module12,
     ];
-    // Append modules 5..12 from the static placeholder content.
-    for (final m in placeholders) {
-      if (m.moduleNumber >= 5) result.add(m);
-    }
     result.sort((a, b) => a.moduleNumber.compareTo(b.moduleNumber));
     return result;
   }
