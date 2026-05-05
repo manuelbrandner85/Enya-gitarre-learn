@@ -11,11 +11,13 @@ import '../audio/pitch_detector.dart';
 import '../audio/tuner_service.dart';
 import '../bluetooth/bluetooth_service.dart';
 import 'package:drift/drift.dart' show Value;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
 import '../models/achievement.dart';
 import '../models/lesson.dart';
 import '../models/user_profile.dart';
+import '../supabase/supabase_sync_service.dart';
 import '../utils/constants.dart';
 
 // =============================================
@@ -486,4 +488,28 @@ final onboardingCompletedProvider =
     StateNotifierProvider<OnboardingCompletedNotifier, bool>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
   return OnboardingCompletedNotifier(prefs);
+});
+
+// =============================================
+// SUPABASE
+// =============================================
+
+final supabaseClientProvider = Provider<SupabaseClient>((ref) {
+  return Supabase.instance.client;
+});
+
+final supabaseSyncProvider = Provider<SupabaseSyncService>((ref) {
+  return SupabaseSyncService(ref.watch(supabaseClientProvider));
+});
+
+/// Streams the current Supabase auth state. The initial value is whatever
+/// Supabase already restored from SharedPreferences on init().
+final authStateStreamProvider = StreamProvider<AuthState>((ref) {
+  return ref.watch(supabaseClientProvider).auth.onAuthStateChange;
+});
+
+/// Convenience: the currently signed-in [User] (or null when signed out).
+final currentSupabaseUserProvider = Provider<User?>((ref) {
+  ref.watch(authStateStreamProvider);
+  return ref.watch(supabaseClientProvider).auth.currentUser;
 });

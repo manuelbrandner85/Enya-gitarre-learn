@@ -29,19 +29,22 @@ import '../features/ear_training/screens/ear_training_screen.dart';
 import '../features/xmari_settings/screens/xmari_preset_manager_screen.dart';
 import '../features/progress/screens/achievements_screen.dart';
 import '../features/progress/screens/practice_diary_screen.dart';
+import '../features/auth/screens/auth_screen.dart';
 
 part 'router.g.dart';
 
 @riverpod
 GoRouter appRouter(Ref ref) {
   final onboardingComplete = ref.watch(onboardingCompletedProvider);
+  final user = ref.watch(currentSupabaseUserProvider);
 
   return GoRouter(
     initialLocation: '/',
     debugLogDiagnostics: true,
     redirect: (context, state) {
-      // From the splash route, jump straight to home or onboarding.
+      // From the splash route, decide where to go.
       if (state.matchedLocation == '/') {
+        if (user == null) return '/auth';
         return onboardingComplete ? '/home/lessons' : '/onboarding';
       }
       return null;
@@ -51,6 +54,11 @@ GoRouter appRouter(Ref ref) {
         path: '/',
         name: 'splash',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/auth',
+        name: 'auth',
+        builder: (context, state) => const AuthScreen(),
       ),
       GoRoute(
         path: '/onboarding',
