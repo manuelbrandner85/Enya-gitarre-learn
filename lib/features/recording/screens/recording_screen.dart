@@ -120,6 +120,24 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         createdAt: DateTime.now(),
       ),
     );
+
+    // Upload to Supabase Storage (best-effort, never blocks local save).
+    final filePath = _filePath!;
+    final durationSeconds = _elapsed.inSeconds;
+    try {
+      final sync = ref.read(supabaseSyncProvider);
+      final filename =
+          'recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await sync.uploadRecording(
+        localPath: filePath,
+        filename: filename,
+        title: title,
+        durationSeconds: durationSeconds,
+      );
+    } catch (e) {
+      debugPrint('RecordingScreen: Supabase upload failed: $e');
+    }
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aufnahme gespeichert')),

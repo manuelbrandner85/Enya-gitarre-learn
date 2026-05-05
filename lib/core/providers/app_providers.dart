@@ -10,6 +10,7 @@ import '../audio/metronome_service.dart';
 import '../audio/pitch_detector.dart';
 import '../audio/tuner_service.dart';
 import '../bluetooth/bluetooth_service.dart';
+import '../notifications/notification_service.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -630,6 +631,17 @@ final streakVerifierProvider = Provider<void>((ref) {
 
 final updateCheckServiceProvider = Provider<UpdateCheckService>((ref) {
   return UpdateCheckService(ref.watch(supabaseClientProvider));
+});
+
+// =============================================
+// NOTIFICATIONS
+// =============================================
+
+/// Stub notification service provider.
+/// Replace [NotificationService] with a real implementation once
+/// `flutter_local_notifications` is added to pubspec.yaml.
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService();
 });
 
 final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
