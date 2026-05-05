@@ -309,7 +309,7 @@ class NoteHighwayGame extends FlameGame {
     }
 
     // Refresh HUD
-    _hud.update(
+    _hud.updateHud(
       score: _score,
       combo: _combo,
     );
@@ -626,7 +626,7 @@ class _HudComponent extends Component {
     );
   }
 
-  void update({required int score, required int combo}) {
+  void updateHud({required int score, required int combo}) {
     _score = score;
     _combo = combo;
   }

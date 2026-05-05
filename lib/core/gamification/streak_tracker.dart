@@ -184,8 +184,8 @@ class StreakTracker {
     _hasStreakFreeze = true;
   }
 
-  /// Returns true if the streak is still alive based on last practice date
-  static bool isStreakAlive(DateTime lastPractice) {
+  /// Returns true if the streak is still alive based on a given last practice date.
+  static bool checkAlive(DateTime lastPractice) {
     final now = DateTime.now();
     final diff = now.difference(lastPractice).inDays;
     return diff <= 1;

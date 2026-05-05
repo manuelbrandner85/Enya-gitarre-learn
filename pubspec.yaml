@@ -22,7 +22,7 @@ dependencies:
 
   # AUDIO
   just_audio: ^0.9.42
-  record: ^5.1.2
+  record: ^6.2.0
   audio_session: ^0.1.21
   audio_waveforms: ^1.3.0
 
@@ -33,12 +33,12 @@ dependencies:
   flame: ^1.22.0
   flame_audio: ^2.10.7
 
-  # FIREBASE
-  firebase_core: ^3.10.1
-  firebase_auth: ^5.4.2
-  cloud_firestore: ^5.6.5
-  firebase_analytics: ^11.4.4
-  firebase_crashlytics: ^4.2.1
+  # FIREBASE (disabled for MVP build — add google-services.json to re-enable)
+  # firebase_core: ^3.10.1
+  # firebase_auth: ^5.4.2
+  # cloud_firestore: ^5.6.5
+  # firebase_analytics: ^11.4.4
+  # firebase_crashlytics: ^4.2.1
 
   # LOCAL DATABASE
   drift: ^2.22.1
@@ -77,33 +77,14 @@ dev_dependencies:
   json_serializable: ^6.9.0
   drift_dev: ^2.22.1
   flutter_lints: ^5.0.0
-  mockito: ^5.4.5
+
 
 flutter:
   uses-material-design: true
   generate: true
 
-  assets:
-    - assets/audio/
-    - assets/images/
-    - assets/animations/
-    - assets/fonts/
-
-  fonts:
-    - family: Poppins
-      fonts:
-        - asset: assets/fonts/Poppins-Regular.ttf
-        - asset: assets/fonts/Poppins-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Poppins-SemiBold.ttf
-          weight: 600
-    - family: Inter
-      fonts:
-        - asset: assets/fonts/Inter-Regular.ttf
-        - asset: assets/fonts/Inter-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/Inter-Bold.ttf
-          weight: 700
-    - family: JetBrainsMono
-      fonts:
-        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+  # Fonts and assets to be added before production build.
+  # assets:
+  #   - assets/audio/
+  #   - assets/images/
+  #   - assets/animations/

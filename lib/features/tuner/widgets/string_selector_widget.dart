@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
+import 'package:enya_gitarre_learn/core/audio/pitch_detector.dart';
 import 'package:enya_gitarre_learn/core/audio/tuner_service.dart';
 import 'package:enya_gitarre_learn/core/music_theory/note.dart';
 

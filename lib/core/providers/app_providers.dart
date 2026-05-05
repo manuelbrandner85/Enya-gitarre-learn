@@ -10,6 +10,8 @@ import '../audio/metronome_service.dart';
 import '../audio/pitch_detector.dart';
 import '../audio/tuner_service.dart';
 import '../bluetooth/bluetooth_service.dart';
+import 'package:drift/drift.dart' show Value;
+
 import '../database/app_database.dart';
 import '../models/achievement.dart';
 import '../models/lesson.dart';
