@@ -79,8 +79,7 @@ flutter:
   uses-material-design: true
   generate: true
 
-  # Fonts and assets to be added before production build.
-  # assets:
-  #   - assets/audio/
-  #   - assets/images/
-  #   - assets/animations/
+  assets:
+    - assets/audio/
+    - assets/images/
+    - assets/animations/
