@@ -1,6 +1,6 @@
 name: enya_gitarre_learn
 description: E-Gitarre Leicht - Gamifizierte E-Gitarren-Lern-App für die Enya XMARI
-version: 1.3.0+4
+version: 1.4.0+5
 publish_to: none
 
 environment:
