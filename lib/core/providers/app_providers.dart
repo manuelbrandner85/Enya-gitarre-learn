@@ -10,10 +10,14 @@ import '../audio/metronome_service.dart';
 import '../audio/pitch_detector.dart';
 import '../audio/tuner_service.dart';
 import '../bluetooth/bluetooth_service.dart';
+import '../bluetooth/xmari_service.dart';
 import '../notifications/notification_service.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../curriculum/curriculum_fallback.dart';
+import '../curriculum/curriculum_repository.dart';
+import '../curriculum/models/curriculum_models.dart';
 import '../database/app_database.dart';
 import '../gamification/achievement_manager.dart';
 import '../models/achievement.dart';
@@ -22,6 +26,7 @@ import '../models/user_profile.dart';
 import '../supabase/supabase_sync_service.dart';
 import '../updates/update_check_service.dart';
 import '../utils/constants.dart';
+import '../utils/result.dart';
 
 // =============================================
 // CORE INFRASTRUCTURE PROVIDERS
@@ -647,4 +652,37 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 final updateCheckProvider = FutureProvider<UpdateInfo?>((ref) async {
   final service = ref.watch(updateCheckServiceProvider);
   return service.checkForUpdate();
+});
+
+// =============================================
+// XMARI BLE SERVICE
+// =============================================
+
+final xmariServiceProvider = Provider<XmariService>((ref) {
+  final service = XmariService();
+  ref.onDispose(service.dispose);
+  return service;
+});
+
+// =============================================
+// CURRICULUM
+// =============================================
+
+final curriculumRepositoryProvider = Provider<CurriculumRepository>((ref) {
+  final supabase = Supabase.instance.client;
+  final db = ref.watch(databaseProvider);
+  return CurriculumRepository(supabase: supabase, db: db);
+});
+
+final modulesProvider = FutureProvider<List<ModuleModel>>((ref) async {
+  final repo = ref.watch(curriculumRepositoryProvider);
+  final result = await repo.getModules();
+  return result.getOrElse(() => CurriculumFallback.modules);
+});
+
+final lessonsProvider =
+    FutureProvider.family<List<LessonModel>, String>((ref, moduleId) async {
+  final repo = ref.watch(curriculumRepositoryProvider);
+  final result = await repo.getLessonsForModule(moduleId);
+  return result.getOrElse(() => []);
 });
