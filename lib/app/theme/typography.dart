@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'colors.dart';
 
@@ -21,24 +22,21 @@ class AppTypography {
   }) {
     return TextTheme(
       // Display - Poppins Bold, large titles
-      displayLarge: TextStyle(
-        fontFamily: 'Poppins',
+      displayLarge: GoogleFonts.poppins(
         fontSize: 57,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.25,
         color: primaryColor,
         height: 1.12,
       ),
-      displayMedium: TextStyle(
-        fontFamily: 'Poppins',
+      displayMedium: GoogleFonts.poppins(
         fontSize: 45,
         fontWeight: FontWeight.w700,
         letterSpacing: 0,
         color: primaryColor,
         height: 1.16,
       ),
-      displaySmall: TextStyle(
-        fontFamily: 'Poppins',
+      displaySmall: GoogleFonts.poppins(
         fontSize: 36,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
@@ -47,24 +45,21 @@ class AppTypography {
       ),
 
       // Headline - Poppins SemiBold
-      headlineLarge: TextStyle(
-        fontFamily: 'Poppins',
+      headlineLarge: GoogleFonts.poppins(
         fontSize: 32,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
         color: primaryColor,
         height: 1.25,
       ),
-      headlineMedium: TextStyle(
-        fontFamily: 'Poppins',
+      headlineMedium: GoogleFonts.poppins(
         fontSize: 28,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
         color: primaryColor,
         height: 1.29,
       ),
-      headlineSmall: TextStyle(
-        fontFamily: 'Poppins',
+      headlineSmall: GoogleFonts.poppins(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
@@ -73,24 +68,21 @@ class AppTypography {
       ),
 
       // Title - Poppins Medium/SemiBold
-      titleLarge: TextStyle(
-        fontFamily: 'Poppins',
+      titleLarge: GoogleFonts.poppins(
         fontSize: 22,
         fontWeight: FontWeight.w600,
         letterSpacing: 0,
         color: primaryColor,
         height: 1.27,
       ),
-      titleMedium: TextStyle(
-        fontFamily: 'Poppins',
+      titleMedium: GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.15,
         color: primaryColor,
         height: 1.50,
       ),
-      titleSmall: TextStyle(
-        fontFamily: 'Poppins',
+      titleSmall: GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.1,
@@ -99,24 +91,21 @@ class AppTypography {
       ),
 
       // Body - Inter for readability
-      bodyLarge: TextStyle(
-        fontFamily: 'Inter',
+      bodyLarge: GoogleFonts.inter(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.5,
         color: primaryColor,
         height: 1.50,
       ),
-      bodyMedium: TextStyle(
-        fontFamily: 'Inter',
+      bodyMedium: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.25,
         color: secondaryColor,
         height: 1.43,
       ),
-      bodySmall: TextStyle(
-        fontFamily: 'Inter',
+      bodySmall: GoogleFonts.inter(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.4,
@@ -125,24 +114,21 @@ class AppTypography {
       ),
 
       // Label - Inter for UI elements
-      labelLarge: TextStyle(
-        fontFamily: 'Inter',
+      labelLarge: GoogleFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.1,
         color: primaryColor,
         height: 1.43,
       ),
-      labelMedium: TextStyle(
-        fontFamily: 'Inter',
+      labelMedium: GoogleFonts.inter(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
         color: secondaryColor,
         height: 1.33,
       ),
-      labelSmall: TextStyle(
-        fontFamily: 'Inter',
+      labelSmall: GoogleFonts.inter(
         fontSize: 11,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
@@ -153,53 +139,46 @@ class AppTypography {
   }
 
   // Convenience styles
-  static const TextStyle monoLarge = TextStyle(
-    fontFamily: 'JetBrainsMono',
-    fontSize: 48,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -1,
-  );
+  static TextStyle get monoLarge => GoogleFonts.jetBrainsMono(
+        fontSize: 48,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -1,
+      );
 
-  static const TextStyle monoMedium = TextStyle(
-    fontFamily: 'JetBrainsMono',
-    fontSize: 24,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -0.5,
-  );
+  static TextStyle get monoMedium => GoogleFonts.jetBrainsMono(
+        fontSize: 24,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.5,
+      );
 
-  static const TextStyle monoSmall = TextStyle(
-    fontFamily: 'JetBrainsMono',
-    fontSize: 14,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0,
-  );
+  static TextStyle get monoSmall => GoogleFonts.jetBrainsMono(
+        fontSize: 14,
+        fontWeight: FontWeight.w400,
+        letterSpacing: 0,
+      );
 
-  static const TextStyle tabLabel = TextStyle(
-    fontFamily: 'JetBrainsMono',
-    fontSize: 16,
-    fontWeight: FontWeight.w700,
-    letterSpacing: 0,
-  );
+  static TextStyle get tabLabel => GoogleFonts.jetBrainsMono(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0,
+      );
 
-  static const TextStyle xpDisplay = TextStyle(
-    fontFamily: 'Poppins',
-    fontSize: 28,
-    fontWeight: FontWeight.w700,
-    color: Color(0xFFFFD700),
-    letterSpacing: -0.5,
-  );
+  static TextStyle get xpDisplay => GoogleFonts.poppins(
+        fontSize: 28,
+        fontWeight: FontWeight.w700,
+        color: const Color(0xFFFFD700),
+        letterSpacing: -0.5,
+      );
 
-  static const TextStyle noteDisplay = TextStyle(
-    fontFamily: 'JetBrainsMono',
-    fontSize: 64,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -2,
-  );
+  static TextStyle get noteDisplay => GoogleFonts.jetBrainsMono(
+        fontSize: 64,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -2,
+      );
 
-  static const TextStyle bpmDisplay = TextStyle(
-    fontFamily: 'JetBrainsMono',
-    fontSize: 80,
-    fontWeight: FontWeight.w700,
-    letterSpacing: -3,
-  );
+  static TextStyle get bpmDisplay => GoogleFonts.jetBrainsMono(
+        fontSize: 80,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -3,
+      );
 }

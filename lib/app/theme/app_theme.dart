@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'colors.dart';
 import 'typography.dart';
@@ -43,7 +44,6 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.backgroundDark,
-      fontFamily: 'Poppins',
       textTheme: AppTypography.darkTextTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.backgroundDark,
@@ -53,7 +53,6 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         titleTextStyle: AppTypography.darkTextTheme.titleLarge?.copyWith(
-          fontFamily: 'Poppins',
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -64,13 +63,11 @@ class AppTheme {
         showUnselectedLabels: true,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
-        selectedLabelStyle: const TextStyle(
-          fontFamily: 'Inter',
+        selectedLabelStyle: GoogleFonts.inter(
           fontSize: 10,
           fontWeight: FontWeight.w600,
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontFamily: 'Inter',
+        unselectedLabelStyle: GoogleFonts.inter(
           fontSize: 10,
         ),
       ),
@@ -85,15 +82,13 @@ class AppTheme {
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return TextStyle(
-              fontFamily: 'Inter',
+            return GoogleFonts.inter(
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: AppColors.primary,
             );
           }
-          return TextStyle(
-            fontFamily: 'Inter',
+          return GoogleFonts.inter(
             fontSize: 11,
             color: AppColors.textTertiary,
           );
@@ -117,8 +112,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
-            fontFamily: 'Poppins',
+          textStyle: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.3,
@@ -133,8 +127,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
-            fontFamily: 'Poppins',
+          textStyle: GoogleFonts.poppins(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.3,
@@ -148,8 +141,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
-          textStyle: const TextStyle(
-            fontFamily: 'Inter',
+          textStyle: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -176,14 +168,12 @@ class AppTheme {
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        hintStyle: TextStyle(
+        hintStyle: GoogleFonts.inter(
           color: AppColors.textTertiary,
-          fontFamily: 'Inter',
           fontSize: 14,
         ),
-        labelStyle: TextStyle(
+        labelStyle: GoogleFonts.inter(
           color: AppColors.textSecondary,
-          fontFamily: 'Inter',
           fontSize: 14,
         ),
       ),
@@ -193,9 +183,8 @@ class AppTheme {
         thumbColor: AppColors.primary,
         overlayColor: AppColors.primary.withOpacity(0.2),
         valueIndicatorColor: AppColors.primary,
-        valueIndicatorTextStyle: const TextStyle(
+        valueIndicatorTextStyle: GoogleFonts.jetBrainsMono(
           color: Colors.black,
-          fontFamily: 'JetBrainsMono',
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
@@ -217,9 +206,8 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceVariantDark,
         selectedColor: AppColors.primary.withOpacity(0.2),
-        labelStyle: TextStyle(
+        labelStyle: GoogleFonts.inter(
           color: AppColors.textSecondary,
-          fontFamily: 'Inter',
           fontSize: 13,
         ),
         side: BorderSide(color: AppColors.outline),
@@ -235,9 +223,8 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.surfaceDark,
-        contentTextStyle: TextStyle(
+        contentTextStyle: GoogleFonts.inter(
           color: AppColors.textPrimary,
-          fontFamily: 'Inter',
           fontSize: 14,
         ),
         actionTextColor: AppColors.primary,
@@ -252,15 +239,13 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        titleTextStyle: TextStyle(
+        titleTextStyle: GoogleFonts.poppins(
           color: AppColors.textPrimary,
-          fontFamily: 'Poppins',
           fontSize: 20,
           fontWeight: FontWeight.w600,
         ),
-        contentTextStyle: TextStyle(
+        contentTextStyle: GoogleFonts.inter(
           color: AppColors.textSecondary,
-          fontFamily: 'Inter',
           fontSize: 14,
           height: 1.5,
         ),
