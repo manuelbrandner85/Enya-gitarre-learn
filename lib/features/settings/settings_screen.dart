@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../app/app.dart';
 import '../../app/theme/colors.dart';
 import '../../core/audio/pitch_detector.dart';
+import '../../core/bluetooth/bluetooth_service.dart';
 import '../../core/utils/constants.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -129,6 +130,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               },
             ),
           ),
+
+          // XMARI Bluetooth section
+          _SectionHeader(title: 'XMARI Gitarre'),
+          _XmariBluetoothTile(),
 
           // About section
           _SectionHeader(title: 'Über die App'),
@@ -316,6 +321,118 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A self-contained tile that shows the XMARI BLE connection state and
+/// exposes Connect / Disconnect / Scan buttons.
+class _XmariBluetoothTile extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_XmariBluetoothTile> createState() =>
+      _XmariBluetoothTileState();
+}
+
+class _XmariBluetoothTileState extends ConsumerState<_XmariBluetoothTile> {
+  XmariConnectionState _state = XmariConnectionState.unknown;
+  List<DiscoveredXmariDevice> _devices = [];
+  bool _scanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final service = ref.read(bluetoothServiceProvider);
+    service.initialize();
+    _state = service.currentState;
+    service.stateStream.listen((s) {
+      if (mounted) setState(() => _state = s);
+    });
+    service.devicesStream.listen((d) {
+      if (mounted) setState(() => _devices = d);
+    });
+  }
+
+  Future<void> _scan() async {
+    final service = ref.read(bluetoothServiceProvider);
+    setState(() {
+      _scanning = true;
+      _devices = [];
+    });
+    await service.scanForXmari();
+    await Future.delayed(const Duration(seconds: 10));
+    await service.stopScan();
+    if (mounted) setState(() => _scanning = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final service = ref.read(bluetoothServiceProvider);
+    final isConnected = _state.isConnected;
+    final connectedName = service.connectedDeviceName;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          leading: Icon(
+            Icons.bluetooth,
+            color: isConnected ? AppColors.primary : AppColors.textSecondary,
+          ),
+          title: Text(
+            isConnected
+                ? 'Verbunden: ${connectedName ?? 'XMARI'}'
+                : 'XMARI nicht verbunden',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textPrimary,
+                ),
+          ),
+          subtitle: Text(
+            _state.displayName,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.textTertiary,
+                ),
+          ),
+          trailing: isConnected
+              ? TextButton(
+                  onPressed: () => service.disconnect(),
+                  child: const Text('Trennen'),
+                )
+              : TextButton(
+                  onPressed: _scanning ? null : _scan,
+                  child: Text(_scanning ? 'Suche...' : 'Suchen'),
+                ),
+        ),
+        if (_devices.isNotEmpty && !isConnected)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: _devices.map((device) {
+                return ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.bluetooth_searching,
+                      size: 18, color: AppColors.textSecondary),
+                  title: Text(
+                    device.name,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textPrimary,
+                        ),
+                  ),
+                  subtitle: Text(
+                    '${device.rssi} dBm',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                  ),
+                  trailing: TextButton(
+                    onPressed: () => service.connect(device.id),
+                    child: const Text('Verbinden'),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
     );
   }
 }

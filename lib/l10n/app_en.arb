@@ -1,11 +1,17 @@
 {
   "@@locale": "en",
   "appTitle": "E-Guitar Easy",
+  "splashLoading": "Loading…",
   "onboardingWelcome": "Welcome to E-Guitar Easy",
   "onboardingTagline": "For the Enya XMARI Smart Guitar",
   "homeStreakLabel": "Day streak",
   "homeXpLabel": "XP",
   "homeNextLessonLabel": "Next lesson",
+  "tabLessons": "Learn",
+  "tabTuner": "Tuner",
+  "tabMetronome": "Metronome",
+  "tabProgress": "Progress",
+  "tabSettings": "Settings",
   "tunerTitle": "Tuner",
   "tunerInTune": "Perfectly in tune",
   "tunerTooLow": "Too low",
@@ -19,5 +25,14 @@
   "settingsTitle": "Settings",
   "settingsDarkMode": "Dark mode",
   "settingsLanguage": "Language",
-  "settingsResetProgress": "Reset progress"
+  "settingsResetProgress": "Reset progress",
+  "updateAvailable": "Update available",
+  "updateRequired": "Update required",
+  "updateLater": "Later",
+  "updateNow": "Update now",
+  "achievementUnlocked": "{title} unlocked!",
+  "@achievementUnlocked": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "viewAction": "View"
 }

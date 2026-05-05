@@ -4,11 +4,17 @@
   "@appTitle": {
     "description": "App display name"
   },
+  "splashLoading": "Lade…",
   "onboardingWelcome": "Willkommen bei E-Gitarre Leicht",
   "onboardingTagline": "Für die Enya XMARI Smart Guitar",
   "homeStreakLabel": "Tage-Streak",
   "homeXpLabel": "XP",
   "homeNextLessonLabel": "Nächste Lektion",
+  "tabLessons": "Lernen",
+  "tabTuner": "Stimmgerät",
+  "tabMetronome": "Metronom",
+  "tabProgress": "Fortschritt",
+  "tabSettings": "Einstellungen",
   "tunerTitle": "Stimmgerät",
   "tunerInTune": "Perfekt gestimmt",
   "tunerTooLow": "Zu tief",
@@ -22,5 +28,14 @@
   "settingsTitle": "Einstellungen",
   "settingsDarkMode": "Dunkles Design",
   "settingsLanguage": "Sprache",
-  "settingsResetProgress": "Fortschritt zurücksetzen"
+  "settingsResetProgress": "Fortschritt zurücksetzen",
+  "updateAvailable": "Update verfügbar",
+  "updateRequired": "Update erforderlich",
+  "updateLater": "Später",
+  "updateNow": "Jetzt aktualisieren",
+  "achievementUnlocked": "{title} freigeschaltet!",
+  "@achievementUnlocked": {
+    "placeholders": { "title": { "type": "String" } }
+  },
+  "viewAction": "Anzeigen"
 }

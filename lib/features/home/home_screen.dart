@@ -1,22 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme/colors.dart';
+import '../../core/gamification/achievement_banner.dart';
+import '../../core/providers/app_providers.dart';
+import '../../core/updates/update_check_service.dart';
+import '../../core/updates/update_dialog.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const HomeScreen({super.key, required this.navigationShell});
 
   @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _updateDialogShown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Activate the achievement watcher and streak verifier listeners.
+    ref.read(achievementWatcherProvider);
+    ref.read(streakVerifierProvider);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: _buildBottomNavBar(context),
+    // Watch for updates from Supabase app_config.
+    ref.listen<AsyncValue<UpdateInfo?>>(updateCheckProvider, (previous, next) {
+      final info = next.value;
+      if (info == null || _updateDialogShown) return;
+      _updateDialogShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) UpdateDialog.show(context, info);
+      });
+    });
+
+    return AchievementBannerHost(
+      child: Scaffold(
+        body: widget.navigationShell,
+        bottomNavigationBar: _buildBottomNavBar(context),
+      ),
     );
   }
 
   Widget _buildBottomNavBar(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceDark,
@@ -33,41 +67,41 @@ class HomeScreen extends StatelessWidget {
               _NavItem(
                 icon: Icons.school_outlined,
                 activeIcon: Icons.school,
-                label: 'Lernen',
+                label: l10n?.tabLessons ?? 'Lernen',
                 index: 0,
-                currentIndex: navigationShell.currentIndex,
+                currentIndex: widget.navigationShell.currentIndex,
                 onTap: () => _onTabTap(0),
               ),
               _NavItem(
                 icon: Icons.tune_outlined,
                 activeIcon: Icons.tune,
-                label: 'Stimmgerät',
+                label: l10n?.tabTuner ?? 'Stimmgerät',
                 index: 1,
-                currentIndex: navigationShell.currentIndex,
+                currentIndex: widget.navigationShell.currentIndex,
                 onTap: () => _onTabTap(1),
               ),
               _NavItem(
                 icon: Icons.timer_outlined,
                 activeIcon: Icons.timer,
-                label: 'Metronom',
+                label: l10n?.tabMetronome ?? 'Metronom',
                 index: 2,
-                currentIndex: navigationShell.currentIndex,
+                currentIndex: widget.navigationShell.currentIndex,
                 onTap: () => _onTabTap(2),
               ),
               _NavItem(
                 icon: Icons.bar_chart_outlined,
                 activeIcon: Icons.bar_chart,
-                label: 'Fortschritt',
+                label: l10n?.tabProgress ?? 'Fortschritt',
                 index: 3,
-                currentIndex: navigationShell.currentIndex,
+                currentIndex: widget.navigationShell.currentIndex,
                 onTap: () => _onTabTap(3),
               ),
               _NavItem(
                 icon: Icons.settings_outlined,
                 activeIcon: Icons.settings,
-                label: 'Einstellungen',
+                label: l10n?.tabSettings ?? 'Einstellungen',
                 index: 4,
-                currentIndex: navigationShell.currentIndex,
+                currentIndex: widget.navigationShell.currentIndex,
                 onTap: () => _onTabTap(4),
               ),
             ],
@@ -78,9 +112,9 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _onTabTap(int index) {
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       index,
-      initialLocation: index == navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
   }
 }
