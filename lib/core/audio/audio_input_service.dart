@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 
+import '../platform/native_audio_channel.dart';
+
 enum ConnectionType {
   usbOtg,
   microphone,
@@ -41,14 +43,23 @@ extension ConnectionTypeExtension on ConnectionType {
 }
 
 class AudioInputService {
+  /// Known Enya vendor IDs. Update when official IDs are confirmed.
+  static const Set<int> _enyaVendorIds = <int>{
+    0x2E88, // tentative Enya vendor id
+    0x1A86, // common XMARI USB-Audio bridge chipset
+  };
+
   final AudioRecorder _recorder = AudioRecorder();
+  final NativeAudioChannel _native = NativeAudioChannel();
+
   ConnectionType _currentConnectionType = ConnectionType.none;
   bool _isXmariConnected = false;
+  UsbAudioDeviceInfo? _lastDeviceInfo;
 
   final StreamController<ConnectionType> _connectionController =
       StreamController<ConnectionType>.broadcast();
 
-  // For development simulation
+  StreamSubscription<UsbConnectionEvent>? _usbSub;
   Timer? _simulationTimer;
 
   Stream<ConnectionType> get connectionStream => _connectionController.stream;
@@ -56,6 +67,7 @@ class AudioInputService {
   ConnectionType get currentConnectionType => _currentConnectionType;
   bool get isXmariConnected => _isXmariConnected;
   bool get isConnected => _currentConnectionType != ConnectionType.none;
+  UsbAudioDeviceInfo? get lastUsbDeviceInfo => _lastDeviceInfo;
 
   /// Requests microphone permission and returns whether it was granted
   Future<bool> requestMicrophonePermission() async {
@@ -77,10 +89,12 @@ class AudioInputService {
       return ConnectionType.none;
     }
 
-    // Try to detect USB OTG (Enya XMARI)
+    // Subscribe to native USB events (no-op on platforms without native channel).
+    _usbSub ??= _native.usbEvents.listen(_handleUsbEvent);
+
+    // Try to detect USB OTG (Enya XMARI) via native channel
     final isUsb = await _detectUsbOtg();
     if (isUsb) {
-      _isXmariConnected = true;
       _setConnectionType(ConnectionType.usbOtg);
       return ConnectionType.usbOtg;
     }
@@ -98,7 +112,8 @@ class AudioInputService {
 
   /// Starts monitoring for connection changes
   void startMonitoring() {
-    _simulationTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _usbSub ??= _native.usbEvents.listen(_handleUsbEvent);
+    _simulationTimer ??= Timer.periodic(const Duration(seconds: 5), (_) {
       _checkConnections();
     });
   }
@@ -107,6 +122,8 @@ class AudioInputService {
   void stopMonitoring() {
     _simulationTimer?.cancel();
     _simulationTimer = null;
+    _usbSub?.cancel();
+    _usbSub = null;
   }
 
   /// Starts recording to a file
@@ -144,36 +161,74 @@ class AudioInputService {
     }
   }
 
-  /// Detects if USB OTG audio device is connected (platform channel simulation)
+  /// Detects if USB OTG audio device (Enya XMARI) is connected via native code.
   Future<bool> _detectUsbOtg() async {
-    // In a real implementation, this would use platform channels to check
-    // if a USB audio device matching Enya XMARI is connected.
-    // For now, simulate as not connected.
-    return false;
+    final connected = await _native.isUsbAudioConnected();
+    if (!connected) {
+      _isXmariConnected = false;
+      _lastDeviceInfo = null;
+      return false;
+    }
+
+    final info = await _native.getUsbAudioDeviceInfo();
+    _lastDeviceInfo = info;
+    _isXmariConnected = _matchesXmari(info, hadUsbAudio: true);
+    return true;
+  }
+
+  bool _matchesXmari(UsbAudioDeviceInfo? info, {required bool hadUsbAudio}) {
+    if (info == null) {
+      // We have a USB-Audio class device but no descriptor info; treat as
+      // candidate XMARI since the manifest filter targets these.
+      return hadUsbAudio;
+    }
+    final vendor = info.vendorId;
+    if (vendor != null && _enyaVendorIds.contains(vendor)) return true;
+    final name = (info.productName ?? info.manufacturerName ?? '')
+        .toLowerCase();
+    if (name.contains('xmari') || name.contains('enya')) return true;
+    // Fall back: if the system reports a USB-Audio device at all, surface it
+    // as USB-OTG so users can route audio through it.
+    return hadUsbAudio;
+  }
+
+  void _handleUsbEvent(UsbConnectionEvent event) {
+    if (event.connected) {
+      _lastDeviceInfo = event.device;
+      _isXmariConnected = _matchesXmari(event.device, hadUsbAudio: true);
+      _setConnectionType(ConnectionType.usbOtg);
+    } else {
+      _isXmariConnected = false;
+      _lastDeviceInfo = null;
+      // Fall back to microphone if we currently consider USB the source.
+      if (_currentConnectionType == ConnectionType.usbOtg) {
+        _setConnectionType(ConnectionType.microphone);
+      }
+    }
   }
 
   void _checkConnections() async {
     final isUsb = await _detectUsbOtg();
 
     if (isUsb && _currentConnectionType != ConnectionType.usbOtg) {
-      _isXmariConnected = true;
       _setConnectionType(ConnectionType.usbOtg);
     } else if (!isUsb && _currentConnectionType == ConnectionType.usbOtg) {
-      _isXmariConnected = false;
       _setConnectionType(ConnectionType.microphone);
     }
   }
 
   void _setConnectionType(ConnectionType type) {
     _currentConnectionType = type;
-    _connectionController.add(type);
+    if (!_connectionController.isClosed) {
+      _connectionController.add(type);
+    }
   }
 
   /// Returns the input device name
   String get inputDeviceName {
     switch (_currentConnectionType) {
       case ConnectionType.usbOtg:
-        return 'Enya XMARI Smart Guitar';
+        return _lastDeviceInfo?.productName ?? 'Enya XMARI Smart Guitar';
       case ConnectionType.microphone:
         return 'Eingebautes Mikrofon';
       case ConnectionType.bluetooth:
