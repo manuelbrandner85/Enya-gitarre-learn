@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+
+import 'migrations/migration_registry.dart';
 
 part 'app_database.g.dart';
 
@@ -197,17 +200,31 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
+        onCreate: (Migrator m) async {
           await m.createAll();
+          await _seedInitialData();
         },
-        onUpgrade: (m, from, to) async {
-          // Handle future migrations here
+        onUpgrade: (Migrator m, int from, int to) async {
+          await MigrationRegistry.runMigrations(m, this, from, to);
+        },
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA foreign_keys = ON');
+          if (details.wasCreated) {
+            debugPrint(
+              'AppDatabase: Fresh database created (schema v${details.versionNow})',
+            );
+          }
         },
       );
+
+  Future<void> _seedInitialData() async {
+    // Seed default app settings
+    debugPrint('AppDatabase: Seeding initial data...');
+  }
 
   // =============================================
   // USER PROFILE DAO

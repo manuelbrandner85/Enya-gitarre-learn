@@ -8,6 +8,7 @@ import 'package:record/record.dart';
 
 import '../music_theory/note.dart';
 import '../utils/constants.dart';
+import 'pitch_detection_isolate.dart';
 
 enum TuningType {
   standard,
@@ -107,6 +108,8 @@ class PitchDetector {
   Timer? _simulationTimer;
   final AudioRecorder _recorder = AudioRecorder();
   StreamSubscription<Uint8List>? _audioSub;
+  final PitchDetectionIsolate _detectionIsolate = PitchDetectionIsolate();
+  bool _isolateReady = false;
 
   PitchDetector({
     this.sampleRate = AppConstants.sampleRate,
@@ -149,6 +152,12 @@ class PitchDetector {
         },
       );
       debugPrint('PitchDetector: real microphone input started at $sampleRate Hz');
+      // Start detection isolate (best-effort)
+      await _detectionIsolate.start();
+      _isolateReady = _detectionIsolate.isReady;
+      if (!_isolateReady) {
+        debugPrint('PitchDetector: isolate unavailable, running on main thread');
+      }
     } catch (e) {
       debugPrint('PitchDetector: startStream failed ($e) — falling back to simulation');
       _startSimulation();
@@ -157,24 +166,45 @@ class PitchDetector {
 
   void _processAudioChunk(Uint8List bytes) {
     if (!_isRunning || bytes.isEmpty) return;
-
-    // Convert 16-bit signed PCM (little-endian) to float32
     final sampleCount = bytes.length ~/ 2;
-    if (sampleCount < 64) return; // too small to analyse
+    if (sampleCount < 64) return;
 
     final samples = Float32List(sampleCount);
     for (int i = 0; i < sampleCount; i++) {
       final lo = bytes[i * 2] & 0xFF;
       final hi = bytes[i * 2 + 1] & 0xFF;
       var raw = (hi << 8) | lo;
-      if (raw > 32767) raw -= 65536; // to signed
+      if (raw > 32767) raw -= 65536;
       samples[i] = raw / 32768.0;
     }
 
-    final result = detectFromSamples(samples, sampleRate);
-    if (result != null && !_pitchController.isClosed) {
-      _pitchController.add(result);
+    if (_isolateReady) {
+      _processInIsolate(samples);
+    } else {
+      final result = detectFromSamples(samples, sampleRate);
+      if (result != null && !_pitchController.isClosed) {
+        _pitchController.add(result);
+      }
     }
+  }
+
+  Future<void> _processInIsolate(Float32List samples) async {
+    final start = DateTime.now();
+    final result = await _detectionIsolate.detect(samples, sampleRate);
+    if (result == null || !_isRunning) return;
+
+    final latencyMs = DateTime.now().difference(start).inMilliseconds;
+    if (latencyMs > 50) {
+      debugPrint('PitchDetector: high latency ${latencyMs}ms');
+    }
+
+    if (result.amplitude < 0.01) return;
+    if (result.frequency == null) return;
+    final freq = result.frequency!;
+    if (freq < 60 || freq > 1400) return;
+
+    final pitchResult = _frequencyToResult(freq, result.amplitude);
+    if (!_pitchController.isClosed) _pitchController.add(pitchResult);
   }
 
   Future<void> stop() async {
@@ -186,6 +216,8 @@ class PitchDetector {
     try {
       await _recorder.stop();
     } catch (_) {}
+    _detectionIsolate.stop();
+    _isolateReady = false;
   }
 
   /// Process a raw audio sample buffer and return pitch detection result

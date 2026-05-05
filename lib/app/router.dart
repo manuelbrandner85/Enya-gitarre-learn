@@ -92,6 +92,7 @@ GoRouter appRouter(Ref ref) {
           return HomeScreen(navigationShell: navigationShell);
         },
         branches: [
+          // Branch 0 – Lernen
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -117,6 +118,28 @@ GoRouter appRouter(Ref ref) {
               ),
             ],
           ),
+          // Branch 1 – Songbuch
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/home/songbuch',
+                name: 'songbuch',
+                builder: (context, state) =>
+                    const SongLibraryScreen(isTab: true),
+                routes: [
+                  GoRoute(
+                    path: ':songId',
+                    name: 'songbuch-practice',
+                    builder: (context, state) {
+                      final id = state.pathParameters['songId'] ?? '';
+                      return SongPracticeScreen(songId: id);
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Branch 2 – Stimmgerät
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -126,6 +149,7 @@ GoRouter appRouter(Ref ref) {
               ),
             ],
           ),
+          // Branch 3 – Metronom
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -135,6 +159,7 @@ GoRouter appRouter(Ref ref) {
               ),
             ],
           ),
+          // Branch 4 – Fortschritt
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -144,6 +169,7 @@ GoRouter appRouter(Ref ref) {
               ),
             ],
           ),
+          // Branch 5 – Einstellungen
           StatefulShellBranch(
             routes: [
               GoRoute(

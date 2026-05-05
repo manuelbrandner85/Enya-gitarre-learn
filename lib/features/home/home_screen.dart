@@ -13,6 +13,14 @@ import '../../core/utils/constants.dart';
 import '../../core/database/app_database.dart';
 import '../../core/curriculum/curriculum.dart';
 
+// Tab indices
+const int _tabLernen = 0;
+const int _tabSongbuch = 1;
+const int _tabTuner = 2;
+const int _tabMetronome = 3;
+const int _tabProgress = 4;
+const int _tabSettings = 5;
+
 class HomeScreen extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -80,7 +88,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       });
     });
 
-    final showCta = widget.navigationShell.currentIndex == 0;
+    final currentIndex = widget.navigationShell.currentIndex;
+    final showCta = currentIndex == _tabLernen;
 
     return AchievementBannerHost(
       child: Scaffold(
@@ -91,17 +100,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     lessonTitle:
                         _lastLessonTitle ?? 'Modul 1 – Grundlagen',
                   ),
+                  SongbuchCard(
+                    onTap: () => _onTabTap(_tabSongbuch),
+                  ),
                   Expanded(child: widget.navigationShell),
                 ],
               )
             : widget.navigationShell,
         bottomNavigationBar: _buildBottomNavBar(context),
+        floatingActionButton: currentIndex == _tabLernen
+            ? FloatingActionButton.small(
+                heroTag: 'metronome_fab',
+                backgroundColor: const Color(0xFF7C3AED),
+                onPressed: () => _onTabTap(_tabMetronome),
+                tooltip: 'Metronom',
+                child: const Icon(Icons.timer_outlined, color: Colors.white),
+              )
+            : null,
       ),
     );
   }
 
   Widget _buildBottomNavBar(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final currentIndex = widget.navigationShell.currentIndex;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surfaceDark,
@@ -119,37 +141,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 icon: Icons.school_outlined,
                 activeIcon: Icons.school,
                 label: l10n?.tabLessons ?? 'Lernen',
-                index: 0,
-                currentIndex: widget.navigationShell.currentIndex,
-                onTap: () => _onTabTap(0),
+                index: _tabLernen,
+                currentIndex: currentIndex,
+                onTap: () => _onTabTap(_tabLernen),
+              ),
+              _SongbuchNavItem(
+                currentIndex: currentIndex,
+                onTap: () => _onTabTap(_tabSongbuch),
               ),
               _NavItem(
                 icon: Icons.tune_outlined,
                 activeIcon: Icons.tune,
                 label: l10n?.tabTuner ?? 'Stimmgerät',
-                index: 1,
-                currentIndex: widget.navigationShell.currentIndex,
-                onTap: () => _onTabTap(1),
-              ),
-              _MetronomeNavItem(
-                currentIndex: widget.navigationShell.currentIndex,
-                onTap: () => _onTabTap(2),
+                index: _tabTuner,
+                currentIndex: currentIndex,
+                onTap: () => _onTabTap(_tabTuner),
               ),
               _NavItem(
                 icon: Icons.bar_chart_outlined,
                 activeIcon: Icons.bar_chart,
                 label: l10n?.tabProgress ?? 'Fortschritt',
-                index: 3,
-                currentIndex: widget.navigationShell.currentIndex,
-                onTap: () => _onTabTap(3),
+                index: _tabProgress,
+                currentIndex: currentIndex,
+                onTap: () => _onTabTap(_tabProgress),
               ),
               _NavItem(
                 icon: Icons.settings_outlined,
                 activeIcon: Icons.settings,
                 label: l10n?.tabSettings ?? 'Einstellungen',
-                index: 4,
-                currentIndex: widget.navigationShell.currentIndex,
-                onTap: () => _onTabTap(4),
+                index: _tabSettings,
+                currentIndex: currentIndex,
+                onTap: () => _onTabTap(_tabSettings),
               ),
             ],
           ),
@@ -228,19 +250,19 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-/// FAB-style highlighted nav item for the middle tab (Metronome, index 2).
-class _MetronomeNavItem extends StatelessWidget {
+/// FAB-style highlighted nav item for the Songbuch tab (index 1).
+class _SongbuchNavItem extends StatelessWidget {
   final int currentIndex;
   final VoidCallback onTap;
 
-  const _MetronomeNavItem({
+  const _SongbuchNavItem({
     required this.currentIndex,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isSelected = currentIndex == 2;
+    final isSelected = currentIndex == _tabSongbuch;
 
     return GestureDetector(
       onTap: onTap,
@@ -265,14 +287,14 @@ class _MetronomeNavItem extends StatelessWidget {
                 ],
               ),
               child: Icon(
-                isSelected ? Icons.timer : Icons.timer_outlined,
-                size: 28,
+                isSelected ? Icons.library_music : Icons.library_music_outlined,
+                size: 26,
                 color: Colors.white,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              'Metronom',
+              'Songbuch',
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 10,
@@ -281,6 +303,82 @@ class _MetronomeNavItem extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Card that promotes the Songbuch feature from the Lernen (lessons) tab.
+class SongbuchCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const SongbuchCard({super.key, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: AppColors.cardDark,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.primary.withOpacity(0.35),
+              width: 1,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary.withOpacity(0.15),
+                ),
+                child: const Icon(
+                  Icons.library_music,
+                  size: 24,
+                  color: AppColors.primaryLight,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      'Songbuch',
+                      style: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      '200 Songs zum Nachspielen',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
         ),
       ),
     );
