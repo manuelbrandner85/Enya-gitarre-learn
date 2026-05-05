@@ -4,14 +4,23 @@ Eine gamifizierte E-Gitarren-Lern-App, speziell entwickelt für die **Enya XMARI
 
 ## Download
 
-| Variante | Link |
-|---|---|
-| Aktuelle APK (im Repo) | [`dist/enya-gitarre-leicht-v1.0.0.apk`](dist/enya-gitarre-leicht-v1.0.0.apk) |
-| Aktuelles Release | [GitHub Releases](https://github.com/manuelbrandner85/Enya-gitarre-learn/releases/latest) |
+Aktuelles Release: **[GitHub Releases](https://github.com/manuelbrandner85/Enya-gitarre-learn/releases/latest)**
 
-Auf dem Android-Gerät "Installation aus unbekannten Quellen" erlauben, dann die `.apk` öffnen.
+Auf dem Android-Gerät „Installation aus unbekannten Quellen" erlauben, dann die `.apk` öffnen. Update über die installierte Version ist möglich (gleicher Signing-Key vorausgesetzt).
 
-Neue Releases werden automatisch durch GitHub Actions gebaut, sobald ein `v*`-Tag gepusht wird.
+### Release-Workflow
+
+Releases werden vollautomatisch von GitHub Actions gebaut. Drei Trigger:
+
+1. **Push auf `main` mit neuer Version in `pubspec.yaml`** → Workflow erkennt das, baut, taggt und veröffentlicht.
+2. **Tag-Push `v[0-9]+.[0-9]+.[0-9]+`** → manueller Release-Trigger.
+3. **`workflow_dispatch` aus der Actions-Tab** → manueller Build aus jedem Branch.
+
+Pro Release wird automatisch:
+- die nächste Build-Nummer geprüft (Android `versionCode` muss strikt steigen),
+- ein Changelog aus den Git-Commits seit dem letzten Tag generiert,
+- die APK gebaut, versioniert (`enya-gitarre-leicht-v<x.y.z>-universal.apk`) und an das GitHub-Release gehängt,
+- die Supabase-Tabelle `app_config` mit Version + Download-URL für den In-App-Update-Dialog upserted (sofern `SUPABASE_SERVICE_ROLE_KEY` als Secret gesetzt ist).
 
 ## Funktionen
 
