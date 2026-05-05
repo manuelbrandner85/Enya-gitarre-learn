@@ -5,8 +5,10 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app.dart';
+import 'core/providers/app_providers.dart';
 
 Future<void> main() async {
   runZonedGuarded<Future<void>>(
@@ -16,9 +18,15 @@ Future<void> main() async {
       await _initializeFirebase();
       _setupErrorHandling();
 
+      // Resolve SharedPreferences early so providers can read it synchronously.
+      final prefs = await SharedPreferences.getInstance();
+
       runApp(
-        const ProviderScope(
-          child: EnyaGitarreApp(),
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+          ],
+          child: const EnyaGitarreApp(),
         ),
       );
     },

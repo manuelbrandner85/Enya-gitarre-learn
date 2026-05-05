@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../core/providers/app_providers.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/onboarding/onboarding_flow.dart';
 import '../features/onboarding/pages/welcome_page.dart';
@@ -22,9 +23,18 @@ part 'router.g.dart';
 
 @riverpod
 GoRouter appRouter(Ref ref) {
+  final onboardingComplete = ref.watch(onboardingCompletedProvider);
+
   return GoRouter(
     initialLocation: '/',
     debugLogDiagnostics: true,
+    redirect: (context, state) {
+      // From the splash route, jump straight to home or onboarding.
+      if (state.matchedLocation == '/') {
+        return onboardingComplete ? '/home/lessons' : '/onboarding';
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/',
