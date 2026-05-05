@@ -2054,7 +2054,12 @@ const List<SongData> kSongs = [
 ];
 
 class SongLibraryScreen extends ConsumerStatefulWidget {
-  const SongLibraryScreen({super.key});
+  /// When [isTab] is true the widget is embedded as a shell tab and therefore
+  /// shows no back-button in the AppBar.  When false (default) it is pushed as
+  /// a standalone route and a back button is rendered automatically.
+  final bool isTab;
+
+  const SongLibraryScreen({super.key, this.isTab = false});
 
   @override
   ConsumerState<SongLibraryScreen> createState() => _SongLibraryScreenState();
@@ -2093,9 +2098,33 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
   Widget build(BuildContext context) {
     final songs = _filtered;
     return Scaffold(
-      appBar: AppBar(title: const Text('Songs')),
+      appBar: AppBar(
+        title: const Text('Songbuch'),
+        automaticallyImplyLeading: !widget.isTab,
+      ),
       body: Column(
         children: [
+          // ── Mic-feedback banner ──────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Row(
+              children: const [
+                Icon(Icons.mic, size: 14, color: AppColors.primaryLight),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Wähle einen Song und spiele ihn nach — mit echtem Mikrofon-Feedback',
+                    style: TextStyle(
+                      color: AppColors.primaryLight,
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
           // ── Genre filter ─────────────────────────────────────────────────
           SizedBox(
             height: 44,
@@ -2253,7 +2282,12 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
                             Icons.chevron_right,
                             color: AppColors.textSecondary,
                           ),
-                          onTap: () => context.go('/home/songs/${s.id}'),
+                          onTap: () {
+                            final base = widget.isTab
+                                ? '/home/songbuch'
+                                : '/home/songs';
+                            context.go('$base/${s.id}');
+                          },
                         ),
                       );
                     },

@@ -6,6 +6,7 @@ import '../../app/theme/colors.dart';
 import 'pages/welcome_page.dart';
 import 'pages/guitar_setup_page.dart';
 import 'pages/onboarding_tuner_page.dart';
+import 'pages/first_note_page.dart';
 import 'pages/profile_setup_page.dart';
 
 class OnboardingFlow extends ConsumerStatefulWidget {
@@ -19,9 +20,9 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  /// 3 intro slideshow pages + 4 existing profile-setup pages = 7 total.
+  /// 3 intro slideshow pages + 5 existing profile-setup pages = 8 total.
   static const int _introPages = 3;
-  static const int _totalPages = 7; // 3 intro + 4 existing
+  static const int _totalPages = 8; // 3 intro + 5 existing
 
   @override
   void dispose() {
@@ -138,10 +139,14 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                     onNext: _nextPage,
                   ),
 
-                  // ── Existing profile-setup pages (3, 4, 5, 6) ──
+                  // ── Existing profile-setup pages (3, 4, 5, 6, 7) ──
                   WelcomePageContent(onNext: _nextPage),
                   GuitarSetupPageContent(onNext: _nextPage),
                   OnboardingTunerPageContent(onNext: _nextPage),
+                  FirstNotePage(
+                    onCompleted: _nextPage,
+                    onSkipped: _nextPage,
+                  ),
                   ProfileSetupPageContent(onFinish: () {
                     context.go('/home/lessons');
                   }),
