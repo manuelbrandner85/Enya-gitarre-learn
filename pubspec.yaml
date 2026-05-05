@@ -29,6 +29,10 @@ dependencies:
   # BLUETOOTH
   flutter_blue_plus: ^1.35.3
 
+  # GAME ENGINE
+  flame: ^1.22.0
+  flame_audio: ^2.10.7
+
   # FIREBASE
   firebase_core: ^3.10.1
   firebase_auth: ^5.4.2
