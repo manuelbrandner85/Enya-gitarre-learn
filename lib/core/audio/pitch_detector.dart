@@ -2,6 +2,10 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:record/record.dart';
+
 import '../music_theory/note.dart';
 import '../utils/constants.dart';
 
@@ -101,6 +105,8 @@ class PitchDetector {
 
   bool _isRunning = false;
   Timer? _simulationTimer;
+  final AudioRecorder _recorder = AudioRecorder();
+  StreamSubscription<Uint8List>? _audioSub;
 
   PitchDetector({
     this.sampleRate = AppConstants.sampleRate,
@@ -119,15 +125,67 @@ class PitchDetector {
     if (_isRunning) return;
     _isRunning = true;
 
-    // In a real implementation, this would start the audio input
-    // For now we use simulation for development
-    _startSimulation();
+    // Check permission first
+    final granted = await Permission.microphone.isGranted;
+    if (!granted) {
+      debugPrint('PitchDetector: no mic permission — falling back to simulation');
+      _startSimulation();
+      return;
+    }
+
+    try {
+      final stream = await _recorder.startStream(
+        RecordConfig(
+          encoder: AudioEncoder.pcm16bits,
+          sampleRate: sampleRate,
+          numChannels: 1,
+          bitRate: sampleRate * 16, // 16-bit mono
+        ),
+      );
+      _audioSub = stream.listen(
+        _processAudioChunk,
+        onError: (e) {
+          debugPrint('PitchDetector audio error: $e');
+        },
+      );
+      debugPrint('PitchDetector: real microphone input started at $sampleRate Hz');
+    } catch (e) {
+      debugPrint('PitchDetector: startStream failed ($e) — falling back to simulation');
+      _startSimulation();
+    }
+  }
+
+  void _processAudioChunk(Uint8List bytes) {
+    if (!_isRunning || bytes.isEmpty) return;
+
+    // Convert 16-bit signed PCM (little-endian) to float32
+    final sampleCount = bytes.length ~/ 2;
+    if (sampleCount < 64) return; // too small to analyse
+
+    final samples = Float32List(sampleCount);
+    for (int i = 0; i < sampleCount; i++) {
+      final lo = bytes[i * 2] & 0xFF;
+      final hi = bytes[i * 2 + 1] & 0xFF;
+      var raw = (hi << 8) | lo;
+      if (raw > 32767) raw -= 65536; // to signed
+      samples[i] = raw / 32768.0;
+    }
+
+    final result = detectFromSamples(samples, sampleRate);
+    if (result != null && !_pitchController.isClosed) {
+      _pitchController.add(result);
+    }
   }
 
   Future<void> stop() async {
     _isRunning = false;
     _simulationTimer?.cancel();
     _simulationTimer = null;
+    await _audioSub?.cancel();
+    _audioSub = null;
+    try {
+      await _recorder.stop();
+    } catch (_) {}
   }
 
   /// Process a raw audio sample buffer and return pitch detection result
@@ -286,6 +344,7 @@ class PitchDetector {
 
   void dispose() {
     stop();
+    _recorder.dispose();
     _pitchController.close();
   }
 }
