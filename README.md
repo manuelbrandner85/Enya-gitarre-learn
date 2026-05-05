@@ -2,6 +2,17 @@
 
 Eine gamifizierte E-Gitarren-Lern-App, speziell entwickelt für die **Enya XMARI Smart Guitar**. Die App führt Anfänger:innen Schritt für Schritt durch ein strukturiertes Curriculum mit Echtzeit-Feedback, eingebautem Stimmgerät, Metronom und Bluetooth-Anbindung an die Smart Guitar.
 
+## Download
+
+| Variante | Link |
+|---|---|
+| Aktuelle APK (im Repo) | [`dist/enya-gitarre-leicht-v1.0.0.apk`](dist/enya-gitarre-leicht-v1.0.0.apk) |
+| Aktuelles Release | [GitHub Releases](https://github.com/manuelbrandner85/Enya-gitarre-learn/releases/latest) |
+
+Auf dem Android-Gerät "Installation aus unbekannten Quellen" erlauben, dann die `.apk` öffnen.
+
+Neue Releases werden automatisch durch GitHub Actions gebaut, sobald ein `v*`-Tag gepusht wird.
+
 ## Funktionen
 
 - **Strukturiertes Curriculum** - Vier Module von absoluten Grundlagen bis zu fortgeschrittenen Techniken.
