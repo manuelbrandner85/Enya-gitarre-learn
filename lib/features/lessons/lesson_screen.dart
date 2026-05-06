@@ -6,11 +6,16 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../app/theme/colors.dart';
 import '../../core/curriculum/curriculum.dart';
+import '../../core/curriculum/pedagogy/learning_rules.dart';
 import '../../core/models/lesson.dart';
 import '../../core/practice/practice_session_tracker.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/widgets/hands_free_overlay.dart';
 import 'controllers/lesson_controller.dart';
 import 'widgets/real_time_feedback_widget.dart';
+import 'widgets/reference_audio_button.dart';
+import 'widgets/show_me_how_overlay.dart';
+import 'widgets/xmari_setup_card.dart';
 
 class LessonScreen extends ConsumerStatefulWidget {
   final String moduleId;
@@ -29,6 +34,7 @@ class LessonScreen extends ConsumerStatefulWidget {
 class _LessonScreenState extends ConsumerState<LessonScreen> {
   int _currentStep = 0;
   bool _isExerciseComplete = false;
+  bool _xmariSetupShown = false;
 
   late final LessonKey _lessonKey;
   late final Lesson? _lesson;
@@ -50,6 +56,13 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
             lessonId: widget.lessonId,
           );
     });
+
+    final pedagogy = LearningRules.lessonPedagogy[widget.lessonId];
+    if (pedagogy?.xmariSetup != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _xmariSetupShown = false);
+      });
+    }
   }
 
   @override
@@ -143,6 +156,23 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           onPressed: () => _showExitDialog(),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline, size: 20),
+            tooltip: 'So geht\'s',
+            onPressed: () {
+              final tip = LearningRules.lessonPedagogy[widget.lessonId]
+                  ?.xmariSetup?.explanation;
+              ShowMeHowOverlay.show(
+                context,
+                instruction: steps.isNotEmpty
+                    ? steps[_currentStep]
+                    : lesson.description,
+                lessonId: widget.lessonId,
+                xmariTip: tip,
+                referenceNote: 'E4',
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
@@ -158,8 +188,10 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
+          Column(
+            children: [
           LinearProgressIndicator(
             value: steps.isEmpty ? 0 : (_currentStep + 1) / steps.length,
             backgroundColor: AppColors.outline,
@@ -267,8 +299,26 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
               ),
             ),
           ),
-        ],
-      ),
+            ],
+          ),  // closes Column
+          if (!_xmariSetupShown)
+            Builder(builder: (ctx) {
+              final pedagogy =
+                  LearningRules.lessonPedagogy[widget.lessonId];
+              if (pedagogy?.xmariSetup == null) return const SizedBox.shrink();
+              return Container(
+                color: Colors.black54,
+                child: Center(
+                  child: XmariSetupCard(
+                    setup: pedagogy!.xmariSetup,
+                    onDismiss: () => setState(() => _xmariSetupShown = true),
+                  ),
+                ),
+              );
+            }),
+          const HandsFreeOverlay(),
+        ],  // closes Stack children
+      ),  // closes Stack
     );
   }
 
@@ -431,6 +481,8 @@ class _ExerciseArea extends StatelessWidget {
               icon: const Icon(Icons.mic),
               label: const Text('Aufnahme starten'),
             ),
+            const SizedBox(height: 12),
+            const ReferenceAudioButton(note: 'E4'),
           ] else ...[
             RealTimeFeedbackWidget(result: livePitch),
             const SizedBox(height: 16),

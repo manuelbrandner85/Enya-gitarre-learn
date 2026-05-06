@@ -13,6 +13,8 @@ import '../../core/database/app_database.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/utils/constants.dart';
+import '../../core/audio/hands_free_service.dart';
+import '../../core/widgets/hands_free_overlay.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -143,6 +145,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // XMARI Bluetooth section
           _SectionHeader(title: 'XMARI Gitarre'),
           _XmariBluetoothTile(),
+
+          // Freihändig-Modus section
+          _SectionHeader(title: 'Freihändig-Modus'),
+          Consumer(builder: (context, ref, _) {
+            final mode = ref.watch(handsFreeModeProvider);
+            final modeLabel = switch (mode) {
+              HandsFreeMode.off => 'Deaktiviert',
+              HandsFreeMode.voice => 'Sprachsteuerung',
+              HandsFreeMode.doubleTap => 'Doppeltippen',
+              HandsFreeMode.volumeButton => 'Lautstärketaste',
+            };
+            return _SettingsTile(
+              icon: Icons.record_voice_over_outlined,
+              title: 'Steuerung',
+              subtitle: modeLabel,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showHandsFreePicker(context, ref),
+            );
+          }),
+
+          // Beobachter-Modus section
+          _SectionHeader(title: 'Beobachter-Modus'),
+          _SettingsTile(
+            icon: Icons.supervisor_account_outlined,
+            title: 'Für Eltern & Lehrer',
+            subtitle: 'Fortschritt beobachten ohne Einstellungen zu ändern',
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/home/settings/observer'),
+          ),
 
           // About section
           _SectionHeader(title: 'Über die App'),
@@ -309,6 +340,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (ctx) => _DeleteConfirmationDialog(
         onConfirmed: () => _performFullDelete(),
+      ),
+    );
+  }
+
+  void _showHandsFreePicker(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Freihändig-Modus wählen',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            ...HandsFreeMode.values.map((mode) {
+              final label = switch (mode) {
+                HandsFreeMode.off => 'Deaktiviert',
+                HandsFreeMode.voice => 'Sprachsteuerung (Deutsch)',
+                HandsFreeMode.doubleTap => 'Doppeltippen',
+                HandsFreeMode.volumeButton => 'Lautstärketaste',
+              };
+              final icon = switch (mode) {
+                HandsFreeMode.off => Icons.do_not_disturb_alt,
+                HandsFreeMode.voice => Icons.mic,
+                HandsFreeMode.doubleTap => Icons.touch_app,
+                HandsFreeMode.volumeButton => Icons.volume_up,
+              };
+              return ListTile(
+                leading: Icon(icon),
+                title: Text(label),
+                onTap: () {
+                  ref.read(handsFreeModeProvider.notifier).state = mode;
+                  Navigator.of(context).pop();
+                },
+              );
+            }),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }

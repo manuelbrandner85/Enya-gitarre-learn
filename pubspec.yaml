@@ -95,5 +95,8 @@ flutter:
 
   assets:
     - assets/audio/
+    - assets/audio/notes/
+    - assets/audio/chords/
     - assets/images/
     - assets/animations/
+    - assets/animations/techniques/

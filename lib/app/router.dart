@@ -17,6 +17,7 @@ import '../features/tuner/tuner_screen.dart';
 import '../features/metronome/metronome_screen.dart';
 import '../features/progress/progress_dashboard_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/settings/screens/observer_settings_screen.dart';
 import '../features/lessons/lesson_complete_screen.dart';
 import '../features/chord_library/screens/chord_library_screen.dart';
 import '../features/scale_library/screens/scale_library_screen.dart';
@@ -176,6 +177,11 @@ GoRouter appRouter(Ref ref) {
         path: '/home/settings',
         name: 'settings',
         builder: (_, __) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/home/settings/observer',
+        name: 'observer-settings',
+        builder: (_, __) => const ObserverSettingsScreen(),
       ),
       GoRoute(
         path: '/home/chord-library',
