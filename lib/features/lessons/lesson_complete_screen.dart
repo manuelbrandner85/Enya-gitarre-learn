@@ -1,5 +1,6 @@
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 
@@ -32,6 +33,7 @@ class _LessonCompleteScreenState extends State<LessonCompleteScreen> {
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 3));
     _confettiController.play();
+    HapticFeedback.heavyImpact();
   }
 
   @override
