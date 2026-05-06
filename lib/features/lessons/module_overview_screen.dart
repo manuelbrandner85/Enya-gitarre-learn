@@ -7,6 +7,8 @@ import 'package:percent_indicator/percent_indicator.dart';
 import '../../app/theme/colors.dart';
 import '../../core/models/module.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/widgets/xmari_status_badge.dart';
+import 'widgets/journey_map_widget.dart';
 
 class ModuleOverviewScreen extends ConsumerWidget {
   const ModuleOverviewScreen({super.key});
@@ -38,6 +40,7 @@ class ModuleOverviewScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Lern-Module'),
         actions: [
+          const XmariStatusBadge(),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => context.push('/home/settings'),
@@ -55,6 +58,16 @@ class ModuleOverviewScreen extends ConsumerWidget {
               totalXp: totalXp,
               completedModules: completedModules,
               totalModules: modules.length,
+            ),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: JourneyMapWidget(
+                completedModules: completedModules,
+                currentModule: completedModules + 1,
+                totalModules: modules.length,
+              ),
             ),
           ),
           SliverPadding(

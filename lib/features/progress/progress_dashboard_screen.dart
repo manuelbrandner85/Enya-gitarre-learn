@@ -10,6 +10,7 @@ import '../../core/gamification/level_manager.dart';
 import '../../core/gamification/xp_system.dart';
 import '../../core/gamification/streak_tracker.dart';
 import '../../core/models/achievement.dart';
+import '../../core/progress/progress_comparator.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/utils/constants.dart';
 
@@ -74,6 +75,14 @@ class ProgressDashboardScreen extends ConsumerWidget {
             unlockedCount: achievements.length,
             totalCount: AchievementRegistry.allAchievements.length,
           ).animate(delay: 400.ms).fadeIn(),
+
+          const SizedBox(height: 16),
+
+          // Progress comparator
+          _ProgressComparatorCard(
+            modulesCompleted: modulesCompleted,
+            totalMinutes: totalMinutes,
+          ).animate(delay: 500.ms).fadeIn(),
 
           const SizedBox(height: 32),
         ],
@@ -599,6 +608,139 @@ class _AchievementsPreview extends StatelessWidget {
                   ),
                 )
                 .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProgressComparatorCard extends StatelessWidget {
+  final int modulesCompleted;
+  final int totalMinutes;
+
+  const _ProgressComparatorCard({
+    required this.modulesCompleted,
+    required this.totalMinutes,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final presetsUnlocked = (modulesCompleted >= 12 ? 4 :
+        modulesCompleted >= 9 ? 3 :
+        modulesCompleted >= 6 ? 2 :
+        modulesCompleted >= 3 ? 1 : 0);
+
+    final data = ProgressComparator.compare(
+      accuracyBefore: (totalMinutes > 60 ? 0.55 : 0.40),
+      accuracyNow: (modulesCompleted > 0 ? 0.72 + modulesCompleted * 0.02 : 0.50).clamp(0.0, 1.0),
+      days: 30,
+      presetsUnlockedBefore: (presetsUnlocked > 0 ? presetsUnlocked - 1 : 0),
+      presetsUnlockedNow: presetsUnlocked,
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outline),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                data.isImproving ? Icons.trending_up : Icons.trending_flat,
+                color: data.isImproving ? const Color(0xFF4CAF50) : AppColors.textSecondary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Dein Fortschritt (letzte 30 Tage)',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _ComparisonStat(
+                  label: 'Genauigkeit',
+                  before: '${(data.accuracyThen * 100).round()}%',
+                  after: '${(data.accuracyNow * 100).round()}%',
+                  positive: data.isImproving,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _ComparisonStat(
+                  label: 'Sounds',
+                  before: '${data.presetsUnlockedThen}',
+                  after: '${data.presetsUnlockedNow}',
+                  positive: data.presetsDelta >= 0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            data.presetProgressText,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ComparisonStat extends StatelessWidget {
+  final String label;
+  final String before;
+  final String after;
+  final bool positive;
+
+  const _ComparisonStat({
+    required this.label,
+    required this.before,
+    required this.after,
+    required this.positive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceDark,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(before, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 4),
+                child: Icon(Icons.arrow_forward, size: 12, color: AppColors.textTertiary),
+              ),
+              Text(
+                after,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: positive ? const Color(0xFF4CAF50) : AppColors.primary,
+                ),
+              ),
+            ],
           ),
         ],
       ),

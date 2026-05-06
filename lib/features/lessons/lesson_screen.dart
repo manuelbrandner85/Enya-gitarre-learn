@@ -6,12 +6,14 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../app/theme/colors.dart';
 import '../../core/curriculum/curriculum.dart';
+import '../../core/curriculum/hand_isolation.dart';
 import '../../core/curriculum/pedagogy/learning_rules.dart';
 import '../../core/models/lesson.dart';
 import '../../core/practice/practice_session_tracker.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/widgets/hands_free_overlay.dart';
 import 'controllers/lesson_controller.dart';
+import 'widgets/hand_mode_selector.dart';
 import 'widgets/real_time_feedback_widget.dart';
 import 'widgets/reference_audio_button.dart';
 import 'widgets/show_me_how_overlay.dart';
@@ -35,6 +37,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   int _currentStep = 0;
   bool _isExerciseComplete = false;
   bool _xmariSetupShown = false;
+  PracticeHand _practiceHand = PracticeHand.both;
 
   late final LessonKey _lessonKey;
   late final Lesson? _lesson;
@@ -238,6 +241,22 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                       instruction: steps[_currentStep],
                     ),
                   const SizedBox(height: 24),
+                  if ((isLastStep || steps.isEmpty) && !_isExerciseComplete) ...[
+                    HandModeSelector(
+                      selected: _practiceHand,
+                      onChanged: (h) => setState(() => _practiceHand = h),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _practiceHand.xmariTip,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if ((isLastStep || steps.isEmpty) && !_isExerciseComplete)
                     _ExerciseArea(
                       isListening: state.isListening,
