@@ -74,6 +74,10 @@ dependencies:
   sign_in_with_apple: ^6.1.0
   crypto: ^3.0.5
 
+  # HANDS-FREE + SHARING
+  speech_to_text: ^7.0.0
+  share_plus: ^10.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

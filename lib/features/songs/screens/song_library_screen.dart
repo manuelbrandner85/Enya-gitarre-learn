@@ -2718,13 +2718,103 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
     return list;
   }
 
+  void _showUnlockDialog(BuildContext context, bool isUnlocked) {
+    if (isUnlocked) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Songs verwalten'),
+          content: const Text('Alle Songs sind derzeit freigeschaltet. Wieder sperren?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Abbrechen')),
+            TextButton(
+              onPressed: () {
+                ref.read(songUnlockProvider.notifier).lock();
+                Navigator.pop(ctx);
+              },
+              child: const Text('Sperren'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    _showCodeDialog(context);
+  }
+
+  void _showCodeDialog(BuildContext context) {
+    final controller = TextEditingController();
+    String? errorText;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Songs freischalten'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: 'Code eingeben',
+                  errorText: errorText,
+                  border: const OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _tryCode(ctx, controller, setState, (e) => setState(() => errorText = e)),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Abbrechen')),
+            ElevatedButton(
+              onPressed: () => _tryCode(ctx, controller, setState, (e) => setState(() => errorText = e)),
+              child: const Text('Freischalten'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _tryCode(
+    BuildContext ctx,
+    TextEditingController controller,
+    StateSetter setState,
+    void Function(String?) setError,
+  ) async {
+    final success = await ref.read(songUnlockProvider.notifier).tryUnlock(controller.text);
+    if (success) {
+      if (ctx.mounted) Navigator.pop(ctx);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Alle Songs freigeschaltet! 🎸')),
+        );
+      }
+    } else {
+      setError('Ungültiger Code');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final songs = _filtered;
+    final globalUnlocked = ref.watch(songUnlockProvider);
+    final profile = ref.watch(currentUserProfileProvider).value;
+    final completedModules = profile?.totalModulesCompleted ?? 0;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Songbuch'),
         automaticallyImplyLeading: !widget.isTab,
+        actions: [
+          IconButton(
+            icon: Icon(
+              globalUnlocked ? Icons.lock_open : Icons.lock_outline,
+              color: globalUnlocked ? Colors.green : null,
+            ),
+            onPressed: () => _showUnlockDialog(context, globalUnlocked),
+            tooltip: globalUnlocked ? 'Songs gesperrt' : 'Code eingeben',
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -2815,7 +2905,27 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
                     itemCount: songs.length,
                     itemBuilder: (context, i) {
                       final s = songs[i];
-                      return _SongCard(song: s, isTab: widget.isTab);
+                      final available = _isSongAvailable(s, completedModules, globalUnlocked);
+                      return _SongCard(song: s, isTab: widget.isTab, isLocked: !available, onTapLocked: () {
+                        final moduleNum = s.requiredModuleId?.replaceAll('module-', '') ?? '?';
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Song gesperrt'),
+                            content: Text('Dieser Song wird freigeschaltet, wenn du Modul $moduleNum abschließt.'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _showCodeDialog(context);
+                                },
+                                child: const Text('Code eingeben'),
+                              ),
+                            ],
+                          ),
+                        );
+                      });
                     },
                   ),
           ),
@@ -2828,7 +2938,14 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
 class _SongCard extends StatelessWidget {
   final SongData song;
   final bool isTab;
-  const _SongCard({required this.song, required this.isTab});
+  final bool isLocked;
+  final VoidCallback? onTapLocked;
+  const _SongCard({
+    required this.song,
+    required this.isTab,
+    this.isLocked = false,
+    this.onTapLocked,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -2842,94 +2959,106 @@ class _SongCard extends StatelessWidget {
           else if (acc >= 75) stars = 2;
           else if (acc >= 50) stars = 1;
         }
-        return Card(
+        final tile = Card(
           color: AppColors.cardDark,
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AppColors.primary,
-              child: Text(
-                song.title.substring(0, 1),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+          child: Stack(
+            children: [
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primary,
+                  child: Text(
+                    song.title.substring(0, 1),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            title: Text(
-              song.title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  song.artist,
-                  style: const TextStyle(color: AppColors.textSecondary),
+                title: Text(
+                  song.title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Row(
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ...List.generate(
-                      song.difficulty,
-                      (_) => const Icon(Icons.star, size: 12, color: AppColors.xpColor),
-                    ),
-                    const SizedBox(width: 8),
                     Text(
-                      song.genre,
-                      style: const TextStyle(
-                        color: AppColors.textTertiary,
-                        fontSize: 12,
-                      ),
+                      song.artist,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '♩ ${song.bpm} BPM',
-                      style: const TextStyle(
-                        color: AppColors.textTertiary,
-                        fontSize: 11,
-                      ),
-                    ),
-                    if (song.tuning != 'Standard') ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.25),
-                          borderRadius: BorderRadius.circular(4),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        ...List.generate(
+                          song.difficulty,
+                          (_) => const Icon(Icons.star, size: 12, color: AppColors.xpColor),
                         ),
-                        child: Text(
-                          song.tuning,
+                        const SizedBox(width: 8),
+                        Text(
+                          song.genre,
                           style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
+                            color: AppColors.textTertiary,
+                            fontSize: 12,
                           ),
                         ),
-                      ),
-                    ],
-                    const SizedBox(width: 8),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(3, (i) => Icon(
-                        i < stars ? Icons.star : Icons.star_border,
-                        size: 12,
-                        color: AppColors.xpColor,
-                      )),
+                        const SizedBox(width: 8),
+                        Text(
+                          '♩ ${song.bpm} BPM',
+                          style: const TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 11,
+                          ),
+                        ),
+                        if (song.tuning != 'Standard') ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              song.tuning,
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(3, (i) => Icon(
+                            i < stars ? Icons.star : Icons.star_border,
+                            size: 12,
+                            color: AppColors.xpColor,
+                          )),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-            trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            onTap: () {
-              final base = isTab ? '/home/songbuch' : '/home/songs';
-              context.go('$base/${song.id}');
-            },
+                trailing: isLocked
+                    ? const Icon(Icons.lock, color: AppColors.textSecondary)
+                    : const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                onTap: isLocked
+                    ? onTapLocked
+                    : () {
+                        final base = isTab ? '/home/songbuch' : '/home/songs';
+                        context.go('$base/${song.id}');
+                      },
+              ),
+            ],
           ),
         );
+        if (isLocked) {
+          return Opacity(opacity: 0.5, child: tile);
+        }
+        return tile;
       },
     );
   }
