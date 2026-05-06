@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -165,6 +166,7 @@ class UserProfileNotifier
     );
     await _persist(updated);
     state = AsyncValue.data(updated);
+    HapticFeedback.mediumImpact();
     await _syncProfile(updated);
   }
 
@@ -403,6 +405,7 @@ class AchievementsNotifier extends StateNotifier<List<Achievement>> {
     final unlockedAt = DateTime.now();
     await _db.unlockAchievement(userId, key, unlockedAt);
     state = [...state, base.copyWith(unlockedAt: unlockedAt)];
+    HapticFeedback.heavyImpact();
     return true;
   }
 

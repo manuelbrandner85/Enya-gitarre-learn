@@ -451,6 +451,38 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  Future<void> deleteEverything() async {
+    await transaction(() async {
+      try {
+        await delete(dailyStatsTable).go();
+      } catch (_) {}
+      try {
+        await delete(recordingsTable).go();
+      } catch (_) {}
+      try {
+        await delete(practiceSessionsTable).go();
+      } catch (_) {}
+      try {
+        await delete(achievementsTable).go();
+      } catch (_) {}
+      try {
+        await delete(exerciseResultsTable).go();
+      } catch (_) {}
+      try {
+        await delete(spacedRepetitionItemsTable).go();
+      } catch (_) {}
+      try {
+        await delete(lessonProgressTable).go();
+      } catch (_) {}
+      try {
+        await delete(moduleProgressTable).go();
+      } catch (_) {}
+      try {
+        await delete(userProfilesTable).go();
+      } catch (_) {}
+    });
+  }
+
   Future<DailyStatsTableData?> getTodayStats(String userId) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

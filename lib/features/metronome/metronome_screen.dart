@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../app/theme/colors.dart';
 import '../../app/theme/typography.dart';
@@ -92,9 +94,9 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
     ref.listenManual(metronomeBeatProvider, (_, next) {
       next.whenData((beat) {
         ref.read(metronomeStateProvider.notifier).setBeat(beat.beatNumber);
-        _pendulumController.forward(from: 0).then((_) {
-          _pendulumController.reverse();
-        });
+        _pendulumController.forward(from: 0).then((_) => _pendulumController.reverse());
+        // Haptic auf Beat 1
+        if (beat.beatNumber == 1) HapticFeedback.lightImpact();
       });
     });
   }
@@ -102,6 +104,7 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
   @override
   void dispose() {
     _pendulumController.dispose();
+    WakelockPlus.disable();
     super.dispose();
   }
 
@@ -460,10 +463,12 @@ class _MetronomeScreenState extends ConsumerState<MetronomeScreen>
     if (state.isPlaying) {
       await service.stop();
       notifier.setPlaying(false);
+      await WakelockPlus.disable();
     } else {
       await service.initialize();
       await service.start(state.bpm, state.timeSignature);
       notifier.setPlaying(true);
+      await WakelockPlus.enable();
     }
   }
 }

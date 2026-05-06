@@ -82,6 +82,36 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(supabaseSyncProvider).signInWithGoogle();
+      if (mounted) context.go('/home/lessons');
+    } catch (e) {
+      setState(() => _error = _mapAuthError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(supabaseSyncProvider).signInWithApple();
+      if (mounted) context.go('/home/lessons');
+    } catch (e) {
+      setState(() => _error = _mapAuthError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _continueAsGuest() async {
     setState(() {
       _busy = true;
@@ -356,6 +386,42 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           )
                         : Text(_isSignUp ? 'Registrieren' : 'Anmelden'),
                   ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'oder',
+                          style: TextStyle(color: AppColors.textTertiary),
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _signInWithGoogle,
+                    icon: const Icon(Icons.g_mobiledata, size: 24),
+                    label: const Text('Mit Google anmelden'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 48),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (Theme.of(context).platform == TargetPlatform.iOS ||
+                      Theme.of(context).platform == TargetPlatform.macOS)
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _signInWithApple,
+                      icon: const Icon(Icons.apple, size: 24),
+                      label: const Text('Mit Apple anmelden'),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 48),
+                        backgroundColor: Colors.black,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: _busy

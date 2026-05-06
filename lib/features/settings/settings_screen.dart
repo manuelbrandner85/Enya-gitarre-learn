@@ -9,6 +9,7 @@ import '../../app/app.dart';
 import '../../app/theme/colors.dart';
 import '../../core/audio/pitch_detector.dart';
 import '../../core/bluetooth/bluetooth_service.dart';
+import '../../core/database/app_database.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/utils/constants.dart';
@@ -306,30 +307,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showDeleteDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Alle Daten löschen?'),
-        content: const Text(
-            'Diese Aktion kann nicht rückgängig gemacht werden. Alle Fortschritte, Achievements und Einstellungen werden gelöscht.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Abbrechen'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.clear();
-              if (mounted) context.go('/');
-            },
-            child: Text(
-              'Löschen',
-              style: TextStyle(color: AppColors.error),
-            ),
-          ),
-        ],
+      builder: (ctx) => _DeleteConfirmationDialog(
+        onConfirmed: () => _performFullDelete(),
       ),
     );
+  }
+
+  Future<void> _performFullDelete() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.clear();
+
+      final db = ref.read(databaseProvider);
+      await db.deleteEverything();
+
+      try {
+        final sync = ref.read(supabaseSyncProvider);
+        await sync.deleteAllUserData();
+        await sync.signOut();
+      } catch (_) {}
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Loading schließen
+        context.go('/');
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 
@@ -507,6 +524,72 @@ class _SettingsTile extends StatelessWidget {
                   size: 14, color: AppColors.textTertiary)
               : null),
       onTap: onTap,
+    );
+  }
+}
+
+class _DeleteConfirmationDialog extends StatefulWidget {
+  final VoidCallback onConfirmed;
+  const _DeleteConfirmationDialog({required this.onConfirmed});
+
+  @override
+  State<_DeleteConfirmationDialog> createState() =>
+      _DeleteConfirmationDialogState();
+}
+
+class _DeleteConfirmationDialogState extends State<_DeleteConfirmationDialog> {
+  final _controller = TextEditingController();
+  bool _valid = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Alle Daten löschen?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Diese Aktion kann nicht rückgängig gemacht werden. Alle Fortschritte, Achievements und Einstellungen werden gelöscht.',
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Tippe DELETE ein um zu bestätigen:',
+            style: TextStyle(fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _controller,
+            onChanged: (v) => setState(() => _valid = v.trim() == 'DELETE'),
+            decoration: const InputDecoration(
+              hintText: 'DELETE',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        TextButton(
+          onPressed: _valid
+              ? () {
+                  Navigator.of(context).pop();
+                  widget.onConfirmed();
+                }
+              : null,
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Endgültig löschen'),
+        ),
+      ],
     );
   }
 }

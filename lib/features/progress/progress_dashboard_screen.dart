@@ -2,14 +2,18 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/theme/colors.dart';
+import '../../core/database/app_database.dart';
 import '../../core/gamification/level_manager.dart';
 import '../../core/gamification/xp_system.dart';
 import '../../core/gamification/streak_tracker.dart';
 import '../../core/models/achievement.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/utils/constants.dart';
 
 class ProgressDashboardScreen extends ConsumerWidget {
   const ProgressDashboardScreen({super.key});

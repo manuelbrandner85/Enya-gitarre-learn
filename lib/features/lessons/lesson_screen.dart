@@ -273,12 +273,40 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   }
 
   void _showExitDialog() {
+    int elapsedMinutes = 0;
+    try {
+      elapsedMinutes =
+          ref.read(practiceSessionTrackerProvider).currentSessionMinutes;
+    } catch (_) {}
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Lektion beenden?'),
-        content: const Text(
-            'Dein Fortschritt in dieser Lektion wird nicht gespeichert.'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (elapsedMinutes > 0) ...[
+              const Text('Dein bisheriger Fortschritt wird gespeichert:'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.timer, size: 16),
+                  const SizedBox(width: 8),
+                  Text('$elapsedMinutes Minuten geübt'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Die Lektion wird als unvollständig markiert. Du kannst sie jederzeit fortsetzen.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ] else
+              const Text(
+                  'Du hast noch nicht geübt. Möchtest du trotzdem beenden?'),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -287,11 +315,15 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              ref.read(lessonControllerProvider(_lessonKey).notifier)
-                  .stopListening();
+              try {
+                ref
+                    .read(lessonControllerProvider(_lessonKey).notifier)
+                    .stopListening();
+              } catch (_) {}
               context.go('/home/lessons');
             },
-            child: Text('Beenden', style: TextStyle(color: AppColors.error)),
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: const Text('Beenden & Speichern'),
           ),
         ],
       ),
