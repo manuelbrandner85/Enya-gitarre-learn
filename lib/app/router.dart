@@ -30,6 +30,12 @@ import '../features/xmari_settings/screens/xmari_preset_manager_screen.dart';
 import '../features/progress/screens/achievements_screen.dart';
 import '../features/progress/screens/practice_diary_screen.dart';
 import '../features/auth/screens/auth_screen.dart';
+import '../features/practice/daily_plan_screen.dart';
+import '../features/practice/quick_practice_screen.dart';
+import '../features/practice/warmup_screen.dart';
+import '../features/jam/jam_screen.dart';
+import '../features/theory/theory_mode_screen.dart';
+import '../core/gamification/certificate_generator.dart';
 
 part 'router.g.dart';
 
@@ -232,6 +238,49 @@ GoRouter appRouter(Ref ref) {
         path: '/home/progress/diary',
         name: 'progress-diary',
         builder: (context, state) => const PracticeDiaryScreen(),
+      ),
+      GoRoute(
+        path: '/home/daily-plan',
+        name: 'daily-plan',
+        builder: (_, __) => const DailyPlanScreen(),
+      ),
+      GoRoute(
+        path: '/home/quick-practice',
+        name: 'quick-practice',
+        builder: (_, __) => const QuickPracticeScreen(),
+      ),
+      GoRoute(
+        path: '/home/warmup',
+        name: 'warmup',
+        builder: (_, __) => const WarmupScreen(),
+      ),
+      GoRoute(
+        path: '/home/jam',
+        name: 'jam',
+        builder: (_, __) => const JamScreen(),
+      ),
+      GoRoute(
+        path: '/home/theory',
+        name: 'theory',
+        builder: (_, __) => const TheoryModeScreen(),
+      ),
+      GoRoute(
+        path: '/home/certificate/:type',
+        name: 'certificate',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final typeStr = state.pathParameters['type'] ?? 'moduleCompleted';
+          final certType = CertificateType.values.firstWhere(
+            (e) => e.name == typeStr,
+            orElse: () => CertificateType.moduleCompleted,
+          );
+          final cert = CertificateGenerator.generate(
+            type: certType,
+            username: extra?['username'] as String? ?? 'Gitarrist',
+            presetName: extra?['presetName'] as String? ?? 'Clean',
+          );
+          return CertificateDisplayPage(certificate: cert);
+        },
       ),
       GoRoute(
         path: '/lesson-complete',

@@ -12,6 +12,7 @@ import '../../core/utils/constants.dart';
 import '../../core/database/app_database.dart';
 import '../../core/curriculum/curriculum.dart';
 import '../../core/widgets/offline_banner.dart';
+import 'widgets/daily_plan_card.dart';
 
 // Tab indices (4 tabs)
 const int _tabLernen = 0;
@@ -105,6 +106,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         SongbuchCard(
                           onTap: () => _onTabTap(_tabSongbuch),
                         ),
+                        const DailyPlanCard(),
+                        _QuickActionsRow(),
                         Expanded(child: widget.navigationShell),
                       ],
                     )
@@ -372,6 +375,94 @@ class SongbuchCard extends StatelessWidget {
               const Icon(
                 Icons.chevron_right,
                 color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Quick action buttons row for Jam, Quick Practice, Theory, Warmup.
+class _QuickActionsRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          _QuickActionChip(
+            icon: Icons.bolt,
+            label: 'Schnell',
+            color: const Color(0xFFFF6B35),
+            onTap: () => context.push('/home/quick-practice'),
+          ),
+          const SizedBox(width: 8),
+          _QuickActionChip(
+            icon: Icons.music_note,
+            label: 'Jam',
+            color: const Color(0xFF4CAF50),
+            onTap: () => context.push('/home/jam'),
+          ),
+          const SizedBox(width: 8),
+          _QuickActionChip(
+            icon: Icons.menu_book,
+            label: 'Theorie',
+            color: const Color(0xFF2196F3),
+            onTap: () => context.push('/home/theory'),
+          ),
+          const SizedBox(width: 8),
+          _QuickActionChip(
+            icon: Icons.fitness_center,
+            label: 'Aufwärmen',
+            color: const Color(0xFFFF9800),
+            onTap: () => context.push('/home/warmup'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
             ],
           ),
