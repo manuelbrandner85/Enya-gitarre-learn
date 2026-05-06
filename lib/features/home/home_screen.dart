@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/theme/colors.dart';
 import '../../core/gamification/achievement_banner.dart';
@@ -12,14 +11,13 @@ import '../../core/updates/update_dialog.dart';
 import '../../core/utils/constants.dart';
 import '../../core/database/app_database.dart';
 import '../../core/curriculum/curriculum.dart';
+import '../../core/widgets/offline_banner.dart';
 
-// Tab indices
+// Tab indices (4 tabs)
 const int _tabLernen = 0;
 const int _tabSongbuch = 1;
 const int _tabTuner = 2;
-const int _tabMetronome = 3;
-const int _tabProgress = 4;
-const int _tabSettings = 5;
+const int _tabProgress = 3;
 
 class HomeScreen extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -93,30 +91,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return AchievementBannerHost(
       child: Scaffold(
-        body: showCta
-            ? Column(
-                children: [
-                  WeiterUebenCard(
-                    lessonTitle:
-                        _lastLessonTitle ?? 'Modul 1 – Grundlagen',
-                  ),
-                  SongbuchCard(
-                    onTap: () => _onTabTap(_tabSongbuch),
-                  ),
-                  Expanded(child: widget.navigationShell),
-                ],
-              )
-            : widget.navigationShell,
+        body: Column(
+          children: [
+            const OfflineBanner(),
+            Expanded(
+              child: showCta
+                  ? Column(
+                      children: [
+                        WeiterUebenCard(
+                          lessonTitle:
+                              _lastLessonTitle ?? 'Modul 1 – Grundlagen',
+                        ),
+                        SongbuchCard(
+                          onTap: () => _onTabTap(_tabSongbuch),
+                        ),
+                        Expanded(child: widget.navigationShell),
+                      ],
+                    )
+                  : widget.navigationShell,
+            ),
+          ],
+        ),
         bottomNavigationBar: _buildBottomNavBar(context),
-        floatingActionButton: currentIndex == _tabLernen
-            ? FloatingActionButton.small(
-                heroTag: 'metronome_fab',
-                backgroundColor: const Color(0xFF7C3AED),
-                onPressed: () => _onTabTap(_tabMetronome),
-                tooltip: 'Metronom',
-                child: const Icon(Icons.timer_outlined, color: Colors.white),
-              )
-            : null,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: FloatingActionButton(
+          heroTag: 'metronome_fab',
+          backgroundColor: const Color(0xFF7C3AED),
+          onPressed: () => context.push('/home/metronome'),
+          tooltip: 'Metronom',
+          child: const Icon(Icons.timer_outlined, color: Colors.white),
+        ),
       ),
     );
   }
@@ -164,14 +168,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 index: _tabProgress,
                 currentIndex: currentIndex,
                 onTap: () => _onTabTap(_tabProgress),
-              ),
-              _NavItem(
-                icon: Icons.settings_outlined,
-                activeIcon: Icons.settings,
-                label: l10n?.tabSettings ?? 'Einstellungen',
-                index: _tabSettings,
-                currentIndex: currentIndex,
-                onTap: () => _onTabTap(_tabSettings),
               ),
             ],
           ),

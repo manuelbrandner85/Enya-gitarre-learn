@@ -149,17 +149,7 @@ GoRouter appRouter(Ref ref) {
               ),
             ],
           ),
-          // Branch 3 – Metronom
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/home/metronome',
-                name: 'metronome',
-                builder: (context, state) => const MetronomeScreen(),
-              ),
-            ],
-          ),
-          // Branch 4 – Fortschritt
+          // Branch 3 – Fortschritt
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -169,17 +159,17 @@ GoRouter appRouter(Ref ref) {
               ),
             ],
           ),
-          // Branch 5 – Einstellungen
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/home/settings',
-                name: 'settings',
-                builder: (context, state) => const SettingsScreen(),
-              ),
-            ],
-          ),
         ],
+      ),
+      GoRoute(
+        path: '/home/metronome',
+        name: 'metronome',
+        builder: (_, __) => const MetronomeScreen(),
+      ),
+      GoRoute(
+        path: '/home/settings',
+        name: 'settings',
+        builder: (_, __) => const SettingsScreen(),
       ),
       GoRoute(
         path: '/home/chord-library',

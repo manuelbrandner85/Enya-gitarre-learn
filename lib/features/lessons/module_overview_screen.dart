@@ -6,13 +6,32 @@ import 'package:percent_indicator/percent_indicator.dart';
 
 import '../../app/theme/colors.dart';
 import '../../core/models/module.dart';
+import '../../core/providers/app_providers.dart';
 
 class ModuleOverviewScreen extends ConsumerWidget {
   const ModuleOverviewScreen({super.key});
 
+  String _getGreeting(String? name) {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 12
+        ? 'Guten Morgen'
+        : hour < 18
+            ? 'Guten Tag'
+            : 'Guten Abend';
+    return name != null && name.isNotEmpty
+        ? '$greeting, $name! 👋'
+        : '$greeting! 👋';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final modules = ModuleContent.allModules;
+
+    final profile = ref.watch(currentUserProfileProvider).value;
+    final username = profile?.username;
+    final streak = profile?.currentStreak ?? 0;
+    final totalXp = profile?.totalXp ?? 0;
+    final completedModules = profile?.totalModulesCompleted ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
@@ -20,16 +39,23 @@ class ModuleOverviewScreen extends ConsumerWidget {
         title: const Text('Lern-Module'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.emoji_events_outlined),
-            onPressed: () {},
-            tooltip: 'Achievements',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push('/home/settings'),
+            tooltip: 'Einstellungen',
           ),
         ],
       ),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: _buildHeader(context),
+            child: _buildHeader(
+              context,
+              greeting: _getGreeting(username),
+              streak: streak,
+              totalXp: totalXp,
+              completedModules: completedModules,
+              totalModules: modules.length,
+            ),
           ),
           SliverPadding(
             padding: const EdgeInsets.all(16),
@@ -55,7 +81,17 @@ class ModuleOverviewScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(
+    BuildContext context, {
+    required String greeting,
+    required int streak,
+    required int totalXp,
+    required int completedModules,
+    required int totalModules,
+  }) {
+    final progress =
+        totalModules > 0 ? completedModules / totalModules : 0.0;
+
     return Container(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -67,19 +103,26 @@ class ModuleOverviewScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Guten Tag! 👋',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      child: Text(
+                        greeting,
+                        key: ValueKey(greeting),
+                        style:
+                            Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                      ),
                     ),
                     Text(
                       'Weiter lernen',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: AppColors.textPrimary,
-                                fontWeight: FontWeight.w700,
-                              ),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                   ],
                 ),
@@ -100,7 +143,7 @@ class ModuleOverviewScreen extends ConsumerWidget {
                     const Text('🔥', style: TextStyle(fontSize: 16)),
                     const SizedBox(width: 4),
                     Text(
-                      '0 Tage',
+                      '$streak Tage',
                       style: TextStyle(
                         color: AppColors.streakColor,
                         fontWeight: FontWeight.w700,
@@ -137,7 +180,7 @@ class ModuleOverviewScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '0 / 12 Module',
+                        '$completedModules / $totalModules Module',
                         style: Theme.of(context)
                             .textTheme
                             .titleMedium
@@ -148,9 +191,10 @@ class ModuleOverviewScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
-                        value: 0.0,
+                        value: progress,
                         backgroundColor: Colors.black.withOpacity(0.2),
-                        valueColor: const AlwaysStoppedAnimation(Colors.black),
+                        valueColor:
+                            const AlwaysStoppedAnimation(Colors.black),
                         borderRadius: BorderRadius.circular(4),
                       ),
                     ],
@@ -160,17 +204,22 @@ class ModuleOverviewScreen extends ConsumerWidget {
                 Column(
                   children: [
                     Text(
-                      '0',
-                      style:
-                          Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                color: Colors.black,
-                                fontWeight: FontWeight.w700,
-                                fontFamily: 'Poppins',
-                              ),
+                      '$totalXp',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineLarge
+                          ?.copyWith(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'Poppins',
+                          ),
                     ),
                     Text(
                       'XP',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
                             color: Colors.black.withOpacity(0.7),
                             fontWeight: FontWeight.w600,
                           ),
@@ -209,7 +258,9 @@ class _ModuleCard extends StatelessWidget {
           color: AppColors.cardDark,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isLocked ? AppColors.outline : AppColors.primary.withOpacity(0.3),
+            color: isLocked
+                ? AppColors.outline
+                : AppColors.primary.withOpacity(0.3),
           ),
         ),
         child: Stack(
@@ -239,7 +290,8 @@ class _ModuleCard extends StatelessWidget {
                     ),
                     child: Center(
                       child: isLocked
-                          ? const Icon(Icons.lock, color: AppColors.textTertiary, size: 20)
+                          ? const Icon(Icons.lock,
+                              color: AppColors.textTertiary, size: 20)
                           : Text(
                               '${module.moduleNumber}',
                               style: TextStyle(
@@ -270,18 +322,20 @@ class _ModuleCard extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           module.weekRange,
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.textTertiary,
-                                  ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                color: AppColors.textTertiary,
+                              ),
                         ),
                         const SizedBox(height: 6),
                         if (!isLocked)
                           LinearProgressIndicator(
                             value: module.completionPercentage,
                             backgroundColor: AppColors.outline,
-                            valueColor:
-                                const AlwaysStoppedAnimation(AppColors.primary),
+                            valueColor: const AlwaysStoppedAnimation(
+                                AppColors.primary),
                             borderRadius: BorderRadius.circular(2),
                             minHeight: 4,
                           ),
@@ -295,7 +349,7 @@ class _ModuleCard extends StatelessWidget {
                       _DifficultyDots(difficulty: module.difficulty),
                       const SizedBox(height: 4),
                       if (!isLocked)
-                        Icon(
+                        const Icon(
                           Icons.arrow_forward_ios,
                           size: 14,
                           color: AppColors.textTertiary,

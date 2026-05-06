@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme/colors.dart';
+import '../../core/curriculum/curriculum.dart';
 import '../../core/providers/app_providers.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -15,23 +16,37 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  String _loadingMessage = 'Starte App…';
+
   @override
   void initState() {
     super.initState();
-    _navigate();
+    _initializeApp();
   }
 
-  Future<void> _navigate() async {
-    // Minimum splash display time avoids flicker on fast loads.
-    await Future.delayed(const Duration(milliseconds: 1500));
+  Future<void> _initializeApp() async {
+    final stopwatch = Stopwatch()..start();
+
+    setState(() => _loadingMessage = 'Datenbank laden…');
+    try {
+      final db = ref.read(databaseProvider);
+      await db.getUserProfile(
+          ref.read(sharedPreferencesProvider).getString('user_id') ?? '');
+    } catch (_) {}
+
+    setState(() => _loadingMessage = 'Lehrplan vorbereiten…');
+    // ignore: unused_local_variable
+    final _ = Curriculum.allModules;
+
+    setState(() => _loadingMessage = 'Fast bereit…');
+    final elapsed = stopwatch.elapsedMilliseconds;
+    if (elapsed < 800) {
+      await Future.delayed(Duration(milliseconds: 800 - elapsed));
+    }
 
     if (!mounted) return;
-
     final onboardingComplete = ref.read(onboardingCompletedProvider);
     final user = ref.read(currentSupabaseUserProvider);
-
-    if (!mounted) return;
-
     if (user == null) {
       context.go('/auth');
     } else if (!onboardingComplete) {
@@ -69,7 +84,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             )
                 .animate()
                 .fadeIn(duration: 600.ms)
-                .scale(begin: const Offset(0.5, 0.5), duration: 600.ms, curve: Curves.elasticOut),
+                .scale(
+                    begin: const Offset(0.5, 0.5),
+                    duration: 600.ms,
+                    curve: Curves.elasticOut),
 
             const SizedBox(height: 32),
 
@@ -93,9 +111,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondary,
                   ),
-            )
-                .animate(delay: 500.ms)
-                .fadeIn(duration: 600.ms),
+            ).animate(delay: 500.ms).fadeIn(duration: 600.ms),
 
             const SizedBox(height: 80),
 
@@ -108,17 +124,20 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     const AlwaysStoppedAnimation<Color>(AppColors.primary),
                 borderRadius: BorderRadius.circular(4),
               ),
-            )
-                .animate(delay: 700.ms)
-                .fadeIn(duration: 400.ms),
+            ).animate(delay: 700.ms).fadeIn(duration: 400.ms),
 
             const SizedBox(height: 16),
 
-            Text(
-              AppLocalizations.of(context)?.splashLoading ?? 'Lade…',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
+            // Animated loading message
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: Text(
+                _loadingMessage,
+                key: ValueKey(_loadingMessage),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textTertiary,
+                    ),
+              ),
             ).animate(delay: 800.ms).fadeIn(),
           ],
         ),
