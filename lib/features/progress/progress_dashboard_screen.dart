@@ -67,7 +67,7 @@ class ProgressDashboardScreen extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // Practice chart
-          _PracticeChart().animate(delay: 300.ms).fadeIn(),
+          const _PracticeChart().animate(delay: 300.ms).fadeIn(),
 
           const SizedBox(height: 16),
 
@@ -326,17 +326,46 @@ class _StatsGrid extends StatelessWidget {
   }
 }
 
-class _PracticeChart extends StatelessWidget {
-  _PracticeChart();
+// Provider to load the last 7 days of practice data
+final _last7DaysProvider = FutureProvider<List<_DayData>>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final userId = prefs.getString(AppConstants.prefKeyUserId) ?? '';
+  if (userId.isEmpty) {
+    return List.generate(7, (i) {
+      final day = DateTime.now().subtract(Duration(days: 6 - i));
+      return _DayData(day: day, minutes: 0);
+    });
+  }
 
-  // Generates empty/placeholder chart data
-  final List<FlSpot> _spots = List.generate(
-    7,
-    (i) => FlSpot(i.toDouble(), 0),
-  );
+  final stats = await db.getDailyStats(userId, days: 8);
+  final now = DateTime.now();
+  final result = <_DayData>[];
+  for (int i = 6; i >= 0; i--) {
+    final day = now.subtract(Duration(days: i));
+    final dayStart = DateTime(day.year, day.month, day.day);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final match = stats.where((s) =>
+        !s.date.isBefore(dayStart) && s.date.isBefore(dayEnd));
+    final minutes = match.fold<int>(0, (sum, s) => sum + s.practiceMinutes);
+    result.add(_DayData(day: day, minutes: minutes));
+  }
+  return result;
+});
+
+class _DayData {
+  final DateTime day;
+  final int minutes;
+  const _DayData({required this.day, required this.minutes});
+}
+
+class _PracticeChart extends ConsumerWidget {
+  const _PracticeChart();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncData = ref.watch(_last7DaysProvider);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -354,69 +383,143 @@ class _PracticeChart extends StatelessWidget {
                 ),
           ),
           const SizedBox(height: 20),
-          SizedBox(
-            height: 120,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: 10,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: AppColors.outline,
-                    strokeWidth: 1,
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        const days = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
-                        return Text(
-                          days[value.toInt() % days.length],
-                          style: TextStyle(
-                            color: AppColors.textTertiary,
-                            fontSize: 10,
-                            fontFamily: 'Inter',
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: _spots,
-                    isCurved: true,
-                    color: AppColors.primary,
-                    barWidth: 3,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: AppColors.primary.withOpacity(0.1),
-                    ),
-                  ),
-                ],
-                minX: 0,
-                maxX: 6,
-                minY: 0,
-                maxY: 60,
+          asyncData.when(
+            loading: () => const SizedBox(
+              height: 120,
+              child: Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
+            error: (_, __) => _buildChart(context, [], []),
+            data: (days) {
+              final allZero = days.every((d) => d.minutes == 0);
+              if (allZero) {
+                return _buildMotivationWidget(context);
+              }
+              final spots = days
+                  .asMap()
+                  .entries
+                  .map((e) => FlSpot(e.key.toDouble(), e.value.minutes.toDouble()))
+                  .toList();
+              final totalMinutes =
+                  days.fold<int>(0, (sum, d) => sum + d.minutes);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildChart(context, spots, days),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Diese Woche: ${totalMinutes}m · Durchschnitt: ${(totalMinutes / 7).round()}m/Tag',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildChart(
+      BuildContext context, List<FlSpot> spots, List<_DayData> days) {
+    const weekdays = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+    final now = DateTime.now();
+    final effectiveSpots = spots.isEmpty
+        ? List.generate(7, (i) => FlSpot(i.toDouble(), 0))
+        : spots;
+    final maxY = effectiveSpots
+        .map((s) => s.y)
+        .fold<double>(30, (a, b) => a > b ? a : b);
+
+    return SizedBox(
+      height: 120,
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: (maxY / 3).ceilToDouble().clamp(5, double.infinity),
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: AppColors.outline,
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt();
+                  if (idx < 0 || idx > 6) return const SizedBox.shrink();
+                  final day = now.subtract(Duration(days: 6 - idx));
+                  final label = weekdays[day.weekday - 1];
+                  return Text(
+                    label,
+                    style: TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 10,
+                      fontFamily: 'Inter',
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: effectiveSpots,
+              isCurved: true,
+              color: AppColors.primary,
+              barWidth: 3,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: AppColors.primary.withOpacity(0.1),
+              ),
+            ),
+          ],
+          minX: 0,
+          maxX: 6,
+          minY: 0,
+          maxY: maxY + 5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMotivationWidget(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.music_note, size: 48, color: Color(0xFF444444)),
+        const SizedBox(height: 12),
+        const Text(
+          'Starte deine erste Übung!',
+          style: TextStyle(color: Colors.white70, fontSize: 16),
+        ),
+        const Text(
+          'Hier siehst du bald deinen Übungsverlauf',
+          style: TextStyle(color: Color(0xFF666666), fontSize: 12),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          onPressed: () => context.go('/home/lessons'),
+          child: const Text('Jetzt üben'),
+        ),
+      ],
     );
   }
 }

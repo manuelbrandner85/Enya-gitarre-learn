@@ -42,6 +42,13 @@ class PracticeSessionTracker {
 
   bool get isActive => _sessionId != null;
 
+  /// Returns elapsed minutes for the current session (0 if no session active).
+  int get currentSessionMinutes {
+    final startedAt = _startedAt;
+    if (startedAt == null) return 0;
+    return DateTime.now().difference(startedAt).inMinutes;
+  }
+
   /// Begins a session for the given lesson. No-op if one is already active.
   Future<void> start({required String moduleId, required String lessonId}) async {
     if (_sessionId != null) {

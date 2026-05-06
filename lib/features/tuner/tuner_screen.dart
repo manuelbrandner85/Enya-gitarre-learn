@@ -11,7 +11,6 @@ import '../../app/theme/colors.dart';
 import '../../app/theme/typography.dart';
 import '../../core/audio/pitch_detector.dart';
 import '../../core/audio/tuner_service.dart';
-import '../../core/utils/constants.dart';
 import 'widgets/string_selector_widget.dart';
 
 final tunerServiceProvider = Provider<TunerService>((ref) {
