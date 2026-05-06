@@ -2,14 +2,16 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../app/theme/colors.dart';
 import '../../app/theme/typography.dart';
 import '../../core/audio/pitch_detector.dart';
 import '../../core/audio/tuner_service.dart';
-import '../../core/utils/constants.dart';
+import 'widgets/string_selector_widget.dart';
 
 final tunerServiceProvider = Provider<TunerService>((ref) {
   final service = TunerService();
@@ -31,7 +33,68 @@ class TunerScreen extends ConsumerStatefulWidget {
 
 class _TunerScreenState extends ConsumerState<TunerScreen> {
   bool _isActive = false;
-  TuningType _selectedTuning = TuningType.standard;
+  TuningType _tuning = TuningType.standard;
+
+  int? _autoDetectedString;
+  final Set<int> _tunedStrings = {};
+  DateTime? _lastStringDetect;
+
+  StreamSubscription<TunerReading>? _readingSub;
+
+  int? _findClosestString(double frequency, TuningType tuning) {
+    final midis = tuning.midiNotes;
+    double minCents = double.infinity;
+    int? closestIndex;
+    for (int i = 0; i < midis.length; i++) {
+      final targetFreq = 440.0 * math.pow(2.0, (midis[i] - 69) / 12.0);
+      final cents = 1200 * math.log(frequency / targetFreq) / math.log(2);
+      if (cents.abs() < minCents) {
+        minCents = cents.abs();
+        closestIndex = i;
+      }
+    }
+    return (minCents <= 100) ? closestIndex : null;
+  }
+
+  void _startListening() {
+    final service = ref.read(tunerServiceProvider);
+    _readingSub = service.tunerStream.listen((reading) {
+      if (!mounted) return;
+      if (reading.amplitude > 0.01 && reading.frequency > 0) {
+        final selected = _findClosestString(reading.frequency, _tuning);
+        if (selected != null) {
+          setState(() => _autoDetectedString = selected);
+          // Gestimmt (±5 Cent) für >2 Sekunden?
+          if (reading.centsOff.abs() <= 5) {
+            final now = DateTime.now();
+            if (_lastStringDetect == null) {
+              _lastStringDetect = now;
+            } else if (now.difference(_lastStringDetect!).inSeconds >= 2) {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _tunedStrings.add(selected);
+              });
+              if (_tunedStrings.length == 6 && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Gitarre ist gestimmt! 🎸')),
+                );
+              }
+              _lastStringDetect = null;
+            }
+          } else {
+            _lastStringDetect = null;
+          }
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _readingSub?.cancel();
+    WakelockPlus.disable();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +108,7 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
           PopupMenuButton<TuningType>(
             icon: const Icon(Icons.tune),
             onSelected: (tuning) {
-              setState(() => _selectedTuning = tuning);
+              setState(() => _tuning = tuning);
               ref.read(tunerServiceProvider).setTuningType(tuning);
             },
             itemBuilder: (ctx) => TuningType.values
@@ -54,7 +117,7 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
                     value: t,
                     child: Row(
                       children: [
-                        if (t == _selectedTuning)
+                        if (t == _tuning)
                           const Icon(Icons.check,
                               size: 16, color: AppColors.primary)
                         else
@@ -86,7 +149,7 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
                       border: Border.all(color: AppColors.outline),
                     ),
                     child: Text(
-                      _selectedTuning.displayName,
+                      _tuning.displayName,
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontFamily: 'Inter',
@@ -106,8 +169,12 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
 
                   const Spacer(),
 
-                  // String indicators
-                  _buildStringIndicators(),
+                  // String indicators with auto-detection
+                  StringSelectorWidget(
+                    tuning: _tuning,
+                    activeString: _autoDetectedString,
+                    tunedStrings: _tunedStrings,
+                  ),
 
                   const SizedBox(height: 32),
                 ],
@@ -160,7 +227,9 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
               ? reading.detectedNote.fullName
               : '--',
           style: AppTypography.noteDisplay.copyWith(
-            color: inTune && _isActive ? AppColors.primary : AppColors.textPrimary,
+            color: inTune && _isActive
+                ? AppColors.primary
+                : AppColors.textPrimary,
           ),
         ).animate(key: ValueKey(reading.detectedNote.fullName)).fadeIn(duration: 100.ms),
 
@@ -230,56 +299,17 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
     );
   }
 
-  Widget _buildStringIndicators() {
-    final strings = AppConstants.stringNames;
-    final targetFreqs = AppConstants.standardTuningHz;
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(strings.length, (i) {
-        return Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.surfaceVariantDark,
-                border: Border.all(color: AppColors.outline),
-              ),
-              child: Center(
-                child: Text(
-                  strings[i],
-                  style: const TextStyle(
-                    fontFamily: 'JetBrainsMono',
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${targetFreqs[i].toStringAsFixed(0)}',
-              style: const TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontSize: 10,
-                color: AppColors.textTertiary,
-              ),
-            ),
-          ],
-        );
-      }),
-    );
-  }
-
   Future<void> _toggleTuner() async {
     final service = ref.read(tunerServiceProvider);
     if (_isActive) {
       await service.stop();
+      await _readingSub?.cancel();
+      _readingSub = null;
+      await WakelockPlus.disable();
     } else {
       await service.start();
+      _startListening();
+      await WakelockPlus.enable();
     }
     setState(() => _isActive = !_isActive);
   }

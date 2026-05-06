@@ -17,6 +17,7 @@ import '../features/tuner/tuner_screen.dart';
 import '../features/metronome/metronome_screen.dart';
 import '../features/progress/progress_dashboard_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/settings/screens/observer_settings_screen.dart';
 import '../features/lessons/lesson_complete_screen.dart';
 import '../features/chord_library/screens/chord_library_screen.dart';
 import '../features/scale_library/screens/scale_library_screen.dart';
@@ -30,6 +31,12 @@ import '../features/xmari_settings/screens/xmari_preset_manager_screen.dart';
 import '../features/progress/screens/achievements_screen.dart';
 import '../features/progress/screens/practice_diary_screen.dart';
 import '../features/auth/screens/auth_screen.dart';
+import '../features/practice/daily_plan_screen.dart';
+import '../features/practice/quick_practice_screen.dart';
+import '../features/practice/warmup_screen.dart';
+import '../features/jam/jam_screen.dart';
+import '../features/theory/theory_mode_screen.dart';
+import '../core/gamification/certificate_generator.dart';
 
 part 'router.g.dart';
 
@@ -149,17 +156,7 @@ GoRouter appRouter(Ref ref) {
               ),
             ],
           ),
-          // Branch 3 – Metronom
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/home/metronome',
-                name: 'metronome',
-                builder: (context, state) => const MetronomeScreen(),
-              ),
-            ],
-          ),
-          // Branch 4 – Fortschritt
+          // Branch 3 – Fortschritt
           StatefulShellBranch(
             routes: [
               GoRoute(
@@ -169,17 +166,22 @@ GoRouter appRouter(Ref ref) {
               ),
             ],
           ),
-          // Branch 5 – Einstellungen
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/home/settings',
-                name: 'settings',
-                builder: (context, state) => const SettingsScreen(),
-              ),
-            ],
-          ),
         ],
+      ),
+      GoRoute(
+        path: '/home/metronome',
+        name: 'metronome',
+        builder: (_, __) => const MetronomeScreen(),
+      ),
+      GoRoute(
+        path: '/home/settings',
+        name: 'settings',
+        builder: (_, __) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/home/settings/observer',
+        name: 'observer-settings',
+        builder: (_, __) => const ObserverSettingsScreen(),
       ),
       GoRoute(
         path: '/home/chord-library',
@@ -242,6 +244,49 @@ GoRouter appRouter(Ref ref) {
         path: '/home/progress/diary',
         name: 'progress-diary',
         builder: (context, state) => const PracticeDiaryScreen(),
+      ),
+      GoRoute(
+        path: '/home/daily-plan',
+        name: 'daily-plan',
+        builder: (_, __) => const DailyPlanScreen(),
+      ),
+      GoRoute(
+        path: '/home/quick-practice',
+        name: 'quick-practice',
+        builder: (_, __) => const QuickPracticeScreen(),
+      ),
+      GoRoute(
+        path: '/home/warmup',
+        name: 'warmup',
+        builder: (_, __) => const WarmupScreen(),
+      ),
+      GoRoute(
+        path: '/home/jam',
+        name: 'jam',
+        builder: (_, __) => const JamScreen(),
+      ),
+      GoRoute(
+        path: '/home/theory',
+        name: 'theory',
+        builder: (_, __) => const TheoryModeScreen(),
+      ),
+      GoRoute(
+        path: '/home/certificate/:type',
+        name: 'certificate',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final typeStr = state.pathParameters['type'] ?? 'moduleCompleted';
+          final certType = CertificateType.values.firstWhere(
+            (e) => e.name == typeStr,
+            orElse: () => CertificateType.moduleCompleted,
+          );
+          final cert = CertificateGenerator.generate(
+            type: certType,
+            username: extra?['username'] as String? ?? 'Gitarrist',
+            presetName: extra?['presetName'] as String? ?? 'Clean',
+          );
+          return CertificateDisplayPage(certificate: cert);
+        },
       ),
       GoRoute(
         path: '/lesson-complete',

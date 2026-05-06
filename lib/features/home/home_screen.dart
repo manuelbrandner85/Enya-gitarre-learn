@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/theme/colors.dart';
 import '../../core/gamification/achievement_banner.dart';
@@ -12,14 +11,14 @@ import '../../core/updates/update_dialog.dart';
 import '../../core/utils/constants.dart';
 import '../../core/database/app_database.dart';
 import '../../core/curriculum/curriculum.dart';
+import '../../core/widgets/offline_banner.dart';
+import 'widgets/daily_plan_card.dart';
 
-// Tab indices
+// Tab indices (4 tabs)
 const int _tabLernen = 0;
 const int _tabSongbuch = 1;
 const int _tabTuner = 2;
-const int _tabMetronome = 3;
-const int _tabProgress = 4;
-const int _tabSettings = 5;
+const int _tabProgress = 3;
 
 class HomeScreen extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -93,30 +92,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return AchievementBannerHost(
       child: Scaffold(
-        body: showCta
-            ? Column(
-                children: [
-                  WeiterUebenCard(
-                    lessonTitle:
-                        _lastLessonTitle ?? 'Modul 1 – Grundlagen',
-                  ),
-                  SongbuchCard(
-                    onTap: () => _onTabTap(_tabSongbuch),
-                  ),
-                  Expanded(child: widget.navigationShell),
-                ],
-              )
-            : widget.navigationShell,
+        body: Column(
+          children: [
+            const OfflineBanner(),
+            Expanded(
+              child: showCta
+                  ? Column(
+                      children: [
+                        WeiterUebenCard(
+                          lessonTitle:
+                              _lastLessonTitle ?? 'Modul 1 – Grundlagen',
+                        ),
+                        SongbuchCard(
+                          onTap: () => _onTabTap(_tabSongbuch),
+                        ),
+                        const DailyPlanCard(),
+                        _QuickActionsRow(),
+                        Expanded(child: widget.navigationShell),
+                      ],
+                    )
+                  : widget.navigationShell,
+            ),
+          ],
+        ),
         bottomNavigationBar: _buildBottomNavBar(context),
-        floatingActionButton: currentIndex == _tabLernen
-            ? FloatingActionButton.small(
-                heroTag: 'metronome_fab',
-                backgroundColor: const Color(0xFF7C3AED),
-                onPressed: () => _onTabTap(_tabMetronome),
-                tooltip: 'Metronom',
-                child: const Icon(Icons.timer_outlined, color: Colors.white),
-              )
-            : null,
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: FloatingActionButton(
+          heroTag: 'metronome_fab',
+          backgroundColor: const Color(0xFF7C3AED),
+          onPressed: () => context.push('/home/metronome'),
+          tooltip: 'Metronom',
+          child: const Icon(Icons.timer_outlined, color: Colors.white),
+        ),
       ),
     );
   }
@@ -164,14 +171,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 index: _tabProgress,
                 currentIndex: currentIndex,
                 onTap: () => _onTabTap(_tabProgress),
-              ),
-              _NavItem(
-                icon: Icons.settings_outlined,
-                activeIcon: Icons.settings,
-                label: l10n?.tabSettings ?? 'Einstellungen',
-                index: _tabSettings,
-                currentIndex: currentIndex,
-                onTap: () => _onTabTap(_tabSettings),
               ),
             ],
           ),
@@ -376,6 +375,94 @@ class SongbuchCard extends StatelessWidget {
               const Icon(
                 Icons.chevron_right,
                 color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Quick action buttons row for Jam, Quick Practice, Theory, Warmup.
+class _QuickActionsRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(
+        children: [
+          _QuickActionChip(
+            icon: Icons.bolt,
+            label: 'Schnell',
+            color: const Color(0xFFFF6B35),
+            onTap: () => context.push('/home/quick-practice'),
+          ),
+          const SizedBox(width: 8),
+          _QuickActionChip(
+            icon: Icons.music_note,
+            label: 'Jam',
+            color: const Color(0xFF4CAF50),
+            onTap: () => context.push('/home/jam'),
+          ),
+          const SizedBox(width: 8),
+          _QuickActionChip(
+            icon: Icons.menu_book,
+            label: 'Theorie',
+            color: const Color(0xFF2196F3),
+            onTap: () => context.push('/home/theory'),
+          ),
+          const SizedBox(width: 8),
+          _QuickActionChip(
+            icon: Icons.fitness_center,
+            label: 'Aufwärmen',
+            color: const Color(0xFFFF9800),
+            onTap: () => context.push('/home/warmup'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 20, color: color),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
               ),
             ],
           ),

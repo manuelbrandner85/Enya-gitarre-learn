@@ -1,7 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/user_profile.dart';
@@ -245,6 +250,68 @@ class SupabaseSyncService {
     } catch (_) {
       return null;
     }
+  }
+
+  // ----- Social Auth -----
+
+  Future<void> signInWithGoogle() async {
+    final googleSignIn = GoogleSignIn(scopes: ['email']);
+    final googleUser = await googleSignIn.signIn();
+    if (googleUser == null) throw Exception('Google Sign-In abgebrochen');
+    final googleAuth = await googleUser.authentication;
+    final idToken = googleAuth.idToken;
+    final accessToken = googleAuth.accessToken;
+    if (idToken == null) throw Exception('Kein Google ID-Token erhalten');
+    await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+      accessToken: accessToken,
+    );
+  }
+
+  Future<void> signInWithApple() async {
+    final rawNonce = _generateNonce();
+    final hashedNonce = sha256.convert(utf8.encode(rawNonce)).toString();
+    final credential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+      nonce: hashedNonce,
+    );
+    final idToken = credential.identityToken;
+    if (idToken == null) throw Exception('Kein Apple ID-Token erhalten');
+    await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.apple,
+      idToken: idToken,
+      nonce: rawNonce,
+    );
+  }
+
+  Future<void> deleteAllUserData() async {
+    try {
+      final userId = _client.auth.currentUser?.id;
+      if (userId == null) return;
+      await _client.from('practice_sessions').delete().eq('user_id', userId);
+      await _client.from('lesson_progress').delete().eq('user_id', userId);
+      await _client.from('module_progress').delete().eq('user_id', userId);
+      await _client.from('achievements').delete().eq('user_id', userId);
+      await _client.from('daily_stats').delete().eq('user_id', userId);
+      await _client.from('exercise_results').delete().eq('user_id', userId);
+      await _client.from('user_profiles').delete().eq('id', userId);
+    } catch (e) {
+      debugPrint('deleteAllUserData error: $e');
+    }
+  }
+
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
   }
 
   // ----- Helpers -----

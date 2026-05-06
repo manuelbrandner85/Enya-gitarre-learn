@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
+import 'core/notifications/notification_service.dart';
 import 'core/providers/app_providers.dart';
 import 'core/supabase/supabase_config.dart';
 
@@ -19,6 +20,9 @@ Future<void> main() async {
 
       // Resolve SharedPreferences early so providers can read it synchronously.
       final prefs = await SharedPreferences.getInstance();
+
+      // Initialize notifications (non-blocking).
+      await NotificationService().initialize();
 
       // Initialise Supabase (auth, postgres, storage). Failure does not block
       // app start — the app keeps working in offline-only mode.

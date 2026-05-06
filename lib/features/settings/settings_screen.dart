@@ -9,7 +9,12 @@ import '../../app/app.dart';
 import '../../app/theme/colors.dart';
 import '../../core/audio/pitch_detector.dart';
 import '../../core/bluetooth/bluetooth_service.dart';
+import '../../core/database/app_database.dart';
+import '../../core/notifications/notification_service.dart';
+import '../../core/providers/app_providers.dart';
 import '../../core/utils/constants.dart';
+import '../../core/audio/hands_free_service.dart';
+import '../../core/widgets/hands_free_overlay.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -124,9 +129,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: 'Tägliche Erinnerung zum Üben',
             trailing: Switch(
               value: _notifications,
-              onChanged: (v) {
+              onChanged: (v) async {
                 setState(() => _notifications = v);
-                _saveSetting('notifications', v);
+                await _saveSetting('notifications', v);
+                final svc = ref.read(notificationServiceProvider);
+                if (v) {
+                  await svc.scheduleStreakReminder();
+                } else {
+                  await svc.cancelAll();
+                }
               },
             ),
           ),
@@ -134,6 +145,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // XMARI Bluetooth section
           _SectionHeader(title: 'XMARI Gitarre'),
           _XmariBluetoothTile(),
+
+          // Freihändig-Modus section
+          _SectionHeader(title: 'Freihändig-Modus'),
+          Consumer(builder: (context, ref, _) {
+            final mode = ref.watch(handsFreeModeProvider);
+            final modeLabel = switch (mode) {
+              HandsFreeMode.off => 'Deaktiviert',
+              HandsFreeMode.voice => 'Sprachsteuerung',
+              HandsFreeMode.doubleTap => 'Doppeltippen',
+              HandsFreeMode.volumeButton => 'Lautstärketaste',
+            };
+            return _SettingsTile(
+              icon: Icons.record_voice_over_outlined,
+              title: 'Steuerung',
+              subtitle: modeLabel,
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showHandsFreePicker(context, ref),
+            );
+          }),
+
+          // Beobachter-Modus section
+          _SectionHeader(title: 'Beobachter-Modus'),
+          _SettingsTile(
+            icon: Icons.supervisor_account_outlined,
+            title: 'Für Eltern & Lehrer',
+            subtitle: 'Fortschritt beobachten ohne Einstellungen zu ändern',
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/home/settings/observer'),
+          ),
 
           // About section
           _SectionHeader(title: 'Über die App'),
@@ -298,30 +338,87 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _showDeleteDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Alle Daten löschen?'),
-        content: const Text(
-            'Diese Aktion kann nicht rückgängig gemacht werden. Alle Fortschritte, Achievements und Einstellungen werden gelöscht.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Abbrechen'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.clear();
-              if (mounted) context.go('/');
-            },
-            child: Text(
-              'Löschen',
-              style: TextStyle(color: AppColors.error),
-            ),
-          ),
-        ],
+      builder: (ctx) => _DeleteConfirmationDialog(
+        onConfirmed: () => _performFullDelete(),
       ),
     );
+  }
+
+  void _showHandsFreePicker(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Freihändig-Modus wählen',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            ...HandsFreeMode.values.map((mode) {
+              final label = switch (mode) {
+                HandsFreeMode.off => 'Deaktiviert',
+                HandsFreeMode.voice => 'Sprachsteuerung (Deutsch)',
+                HandsFreeMode.doubleTap => 'Doppeltippen',
+                HandsFreeMode.volumeButton => 'Lautstärketaste',
+              };
+              final icon = switch (mode) {
+                HandsFreeMode.off => Icons.do_not_disturb_alt,
+                HandsFreeMode.voice => Icons.mic,
+                HandsFreeMode.doubleTap => Icons.touch_app,
+                HandsFreeMode.volumeButton => Icons.volume_up,
+              };
+              return ListTile(
+                leading: Icon(icon),
+                title: Text(label),
+                onTap: () {
+                  ref.read(handsFreeModeProvider.notifier).state = mode;
+                  Navigator.of(context).pop();
+                },
+              );
+            }),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _performFullDelete() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final prefs = ref.read(sharedPreferencesProvider);
+      await prefs.clear();
+
+      final db = ref.read(databaseProvider);
+      await db.deleteEverything();
+
+      try {
+        final sync = ref.read(supabaseSyncProvider);
+        await sync.deleteAllUserData();
+        await sync.signOut();
+      } catch (_) {}
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Loading schließen
+        context.go('/');
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 
@@ -499,6 +596,72 @@ class _SettingsTile extends StatelessWidget {
                   size: 14, color: AppColors.textTertiary)
               : null),
       onTap: onTap,
+    );
+  }
+}
+
+class _DeleteConfirmationDialog extends StatefulWidget {
+  final VoidCallback onConfirmed;
+  const _DeleteConfirmationDialog({required this.onConfirmed});
+
+  @override
+  State<_DeleteConfirmationDialog> createState() =>
+      _DeleteConfirmationDialogState();
+}
+
+class _DeleteConfirmationDialogState extends State<_DeleteConfirmationDialog> {
+  final _controller = TextEditingController();
+  bool _valid = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Alle Daten löschen?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Diese Aktion kann nicht rückgängig gemacht werden. Alle Fortschritte, Achievements und Einstellungen werden gelöscht.',
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Tippe DELETE ein um zu bestätigen:',
+            style: TextStyle(fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _controller,
+            onChanged: (v) => setState(() => _valid = v.trim() == 'DELETE'),
+            decoration: const InputDecoration(
+              hintText: 'DELETE',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        TextButton(
+          onPressed: _valid
+              ? () {
+                  Navigator.of(context).pop();
+                  widget.onConfirmed();
+                }
+              : null,
+          style: TextButton.styleFrom(foregroundColor: Colors.red),
+          child: const Text('Endgültig löschen'),
+        ),
+      ],
     );
   }
 }

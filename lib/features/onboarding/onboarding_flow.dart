@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme/colors.dart';
-import 'pages/welcome_page.dart';
 import 'pages/guitar_setup_page.dart';
 import 'pages/onboarding_tuner_page.dart';
 import 'pages/first_note_page.dart';
@@ -20,9 +19,7 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  /// 3 intro slideshow pages + 5 existing profile-setup pages = 8 total.
-  static const int _introPages = 3;
-  static const int _totalPages = 8; // 3 intro + 5 existing
+  static const int _totalPages = 5;
 
   @override
   void dispose() {
@@ -49,9 +46,6 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
       );
     }
   }
-
-  bool get _isLastPage => _currentPage == _totalPages - 1;
-  bool get _isIntroPage => _currentPage < _introPages;
 
   @override
   Widget build(BuildContext context) {
@@ -114,39 +108,18 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
                   setState(() => _currentPage = index);
                 },
                 children: [
-                  // ── Intro slideshow pages (0, 1, 2) ──
-                  _IntroSlidePage(
-                    icon: Icons.music_note,
-                    title: 'Lerne E-Gitarre',
-                    subtitle:
-                        'Schritt für Schritt mit der Enya XMARI Smart Guitar',
-                    buttonLabel: _isLastPage ? 'Loslegen' : 'Weiter',
-                    onNext: _nextPage,
-                  ),
-                  _IntroSlidePage(
-                    icon: Icons.emoji_events,
-                    title: 'Sammle XP & Achievements',
-                    subtitle: 'Bleib motiviert durch Gamification',
-                    buttonLabel: _isLastPage ? 'Loslegen' : 'Weiter',
-                    onNext: _nextPage,
-                  ),
-                  _IntroSlidePage(
-                    icon: Icons.bluetooth,
-                    title: 'Verbinde deine Gitarre',
-                    subtitle:
-                        'Echtzeit-Feedback direkt vom Instrument',
-                    buttonLabel: _isLastPage ? 'Loslegen' : 'Weiter',
-                    onNext: _nextPage,
-                  ),
-
-                  // ── Existing profile-setup pages (3, 4, 5, 6, 7) ──
-                  WelcomePageContent(onNext: _nextPage),
+                  // Page 1: Combined welcome
+                  _CombinedWelcomePage(onNext: _nextPage),
+                  // Page 2: Guitar setup
                   GuitarSetupPageContent(onNext: _nextPage),
+                  // Page 3: Tuner
                   OnboardingTunerPageContent(onNext: _nextPage),
+                  // Page 4: First note
                   FirstNotePage(
                     onCompleted: _nextPage,
                     onSkipped: _nextPage,
                   ),
+                  // Page 5: Profile setup
                   ProfileSetupPageContent(onFinish: () {
                     context.go('/home/lessons');
                   }),
@@ -160,77 +133,102 @@ class _OnboardingFlowState extends ConsumerState<OnboardingFlow> {
   }
 }
 
-/// A single intro slideshow page with an icon, title, subtitle and a button.
-class _IntroSlidePage extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String buttonLabel;
+class _CombinedWelcomePage extends StatelessWidget {
   final VoidCallback onNext;
-
-  const _IntroSlidePage({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.buttonLabel,
-    required this.onNext,
-  });
+  const _CombinedWelcomePage({required this.onNext});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.all(32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 140,
-            height: 140,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
+            width: 120,
+            height: 120,
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.4),
-                  blurRadius: 40,
-                  spreadRadius: 10,
-                ),
-              ],
+              gradient: LinearGradient(
+                colors: [Color(0xFF7C3AED), Color(0xFF3B82F6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
-            child: Icon(
-              icon,
-              size: 80,
-              color: Colors.white,
-            ),
+            child: const Icon(Icons.music_note, size: 64, color: Colors.white),
           ),
-          const SizedBox(height: 48),
-          Text(
-            title,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-            textAlign: TextAlign.center,
+          const SizedBox(height: 32),
+          const Text(
+            'E-Gitarre Leicht',
+            style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w900,
+                color: Colors.white),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Lerne E-Gitarre mit der Enya XMARI',
+            style: TextStyle(fontSize: 16, color: Colors.white70),
+          ),
+          const SizedBox(height: 40),
+          _FeatureRow(
+            icon: Icons.school,
+            text: 'Strukturierter Lernplan von Null bis zum ersten Song',
           ),
           const SizedBox(height: 16),
-          Text(
-            subtitle,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppColors.textSecondary,
-                  height: 1.6,
-                ),
-            textAlign: TextAlign.center,
+          _FeatureRow(
+            icon: Icons.emoji_events,
+            text: 'XP, Achievements & Streaks halten dich motiviert',
           ),
-          const SizedBox(height: 64),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onNext,
-              child: Text(buttonLabel),
+          const SizedBox(height: 16),
+          _FeatureRow(
+            icon: Icons.bluetooth,
+            text: 'Echtzeit-Feedback direkt von deiner Gitarre',
+          ),
+          const Spacer(),
+          ElevatedButton(
+            onPressed: onNext,
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56),
+              backgroundColor: const Color(0xFF7C3AED),
+            ),
+            child: const Text(
+              'Los geht\'s',
+              style: TextStyle(fontSize: 18, color: Colors.white),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FeatureRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _FeatureRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: const Color(0xFF7C3AED).withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: const Color(0xFF7C3AED), size: 20),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ),
+      ],
     );
   }
 }

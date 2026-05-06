@@ -1,8 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
+import 'package:enya_gitarre_learn/core/providers/app_providers.dart';
+
+class SectionBar {
+  final String chord;
+  final int beats;
+  const SectionBar(this.chord, [this.beats = 4]);
+}
+
+class SongSection {
+  final String label;
+  final List<SectionBar> bars;
+  final int repeats;
+  const SongSection({required this.label, required this.bars, this.repeats = 1});
+}
 
 class SongData {
   final String id;
@@ -10,10 +25,14 @@ class SongData {
   final String artist;
   final int difficulty;
   final String genre;
-  final List<String> chords;
   final String lessonRef;
   final int bpm;
   final String tuning;
+  final List<SongSection> sections;
+  final int capo;
+  final String key;
+  final String strumPattern;
+  final String? requiredModuleId; // null = immer frei
 
   const SongData({
     required this.id,
@@ -21,11 +40,23 @@ class SongData {
     required this.artist,
     required this.difficulty,
     required this.genre,
-    required this.chords,
+    required this.sections,
     required this.lessonRef,
     required this.bpm,
     this.tuning = 'Standard',
+    this.capo = 0,
+    this.key = '',
+    this.strumPattern = 'D·D·D·D',
+    this.requiredModuleId,
   });
+
+  List<String> get chords {
+    final seen = <String>{};
+    return sections
+        .expand((s) => s.bars.map((b) => b.chord))
+        .where(seen.add)
+        .toList();
+  }
 }
 
 const List<SongData> kSongs = [
@@ -36,9 +67,11 @@ const List<SongData> kSongs = [
     artist: 'Deep Purple',
     difficulty: 1,
     genre: 'Rock',
-    chords: ['G5', 'A5', 'C5'],
+    sections: [SongSection(label: 'Intro', bars: [SectionBar('G5', 4), SectionBar('G5', 4), SectionBar('G5', 4), SectionBar('G5', 4)], repeats: 1), SongSection(label: 'Verse', bars: [SectionBar('G5', 4), SectionBar('G5', 4), SectionBar('Bb5', 4), SectionBar('Bb5', 4), SectionBar('C5', 4), SectionBar('C5', 4), SectionBar('G5', 4), SectionBar('G5', 4), SectionBar('Bb5', 4), SectionBar('Bb5', 4), SectionBar('Db5', 4), SectionBar('C5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G5', 4), SectionBar('G5', 4), SectionBar('Bb5', 4), SectionBar('Bb5', 4), SectionBar('C5', 4), SectionBar('C5', 4), SectionBar('G5', 4), SectionBar('G5', 4), SectionBar('Bb5', 4), SectionBar('Bb5', 4), SectionBar('Db5', 4), SectionBar('C5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'Gm',
+    strumPattern: 'D···D···',
   ),
   SongData(
     id: 'seven-nation-army',
@@ -46,9 +79,11 @@ const List<SongData> kSongs = [
     artist: 'The White Stripes',
     difficulty: 1,
     genre: 'Rock',
-    chords: ['E5', 'G5', 'D5', 'C5', 'B5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('G5', 4), SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('C5', 4), SectionBar('B5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 124,
+    key: 'Em',
+    strumPattern: 'D···D···',
   ),
   SongData(
     id: 'wild-thing',
@@ -56,9 +91,11 @@ const List<SongData> kSongs = [
     artist: 'The Troggs',
     difficulty: 1,
     genre: 'Rock',
-    chords: ['A', 'D', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    key: 'A',
+    strumPattern: 'D·DU·DU',
   ),
   SongData(
     id: 'johnny-b-goode',
@@ -66,9 +103,11 @@ const List<SongData> kSongs = [
     artist: 'Chuck Berry',
     difficulty: 1,
     genre: 'Rock',
-    chords: ['A7', 'D7', 'E7'],
+    sections: [SongSection(label: 'Intro', bars: [SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4)], repeats: 1), SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('D', 4), SectionBar('D', 4), SectionBar('D', 4), SectionBar('D', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('E', 4), SectionBar('E', 4), SectionBar('D', 4), SectionBar('D', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 168,
+    key: 'A',
+    strumPattern: 'D·D·D·D·',
   ),
   SongData(
     id: 'you-really-got-me',
@@ -76,9 +115,12 @@ const List<SongData> kSongs = [
     artist: 'The Kinks',
     difficulty: 2,
     genre: 'Rock',
-    chords: ['F5', 'G5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('F5', 4), SectionBar('G5', 4), SectionBar('F5', 4), SectionBar('G5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 136,
+    key: 'G',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'creep',
@@ -86,9 +128,12 @@ const List<SongData> kSongs = [
     artist: 'Radiohead',
     difficulty: 2,
     genre: 'Rock',
-    chords: ['G', 'B', 'C', 'Cm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('B', 4), SectionBar('C', 4), SectionBar('Cm', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 92,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'whole-lotta-love',
@@ -96,9 +141,12 @@ const List<SongData> kSongs = [
     artist: 'Led Zeppelin',
     difficulty: 2,
     genre: 'Rock',
-    chords: ['E5', 'D5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('A5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('A5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 90,
+    key: 'Em',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'come-as-you-are',
@@ -106,9 +154,12 @@ const List<SongData> kSongs = [
     artist: 'Nirvana',
     difficulty: 2,
     genre: 'Rock',
-    chords: ['Em', 'Am', 'C', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('D', 4), SectionBar('Em', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('F#m', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 120,
+    key: 'Em',
+    strumPattern: 'D·D·D·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'back-in-black',
@@ -116,9 +167,12 @@ const List<SongData> kSongs = [
     artist: 'AC/DC',
     difficulty: 2,
     genre: 'Rock',
-    chords: ['E5', 'D5', 'A5'],
+    sections: [SongSection(label: 'Intro', bars: [SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('D5', 4), SectionBar('A5', 4), SectionBar('A5', 4)], repeats: 1), SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('D5', 4), SectionBar('A5', 4), SectionBar('A5', 4), SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('E5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('B5', 4), SectionBar('B5', 4), SectionBar('A5', 4), SectionBar('A5', 4), SectionBar('A5', 4), SectionBar('A5', 4), SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 94,
+    key: 'Em',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'all-right-now',
@@ -126,9 +180,12 @@ const List<SongData> kSongs = [
     artist: 'Free',
     difficulty: 2,
     genre: 'Rock',
-    chords: ['A', 'D', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 124,
+    key: 'A',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'born-to-be-wild',
@@ -136,9 +193,12 @@ const List<SongData> kSongs = [
     artist: 'Steppenwolf',
     difficulty: 2,
     genre: 'Rock',
-    chords: ['E5', 'D5', 'G5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('G5', 4), SectionBar('A5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A5', 4), SectionBar('G5', 4), SectionBar('D5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 144,
+    key: 'Em',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'smells-like-teen-spirit',
@@ -146,9 +206,12 @@ const List<SongData> kSongs = [
     artist: 'Nirvana',
     difficulty: 2,
     genre: 'Rock',
-    chords: ['F5', 'A#5', 'G#5', 'C#5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('F5', 4), SectionBar('A#5', 4), SectionBar('G#5', 4), SectionBar('C#5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C#5', 4), SectionBar('G#5', 4), SectionBar('A#5', 4), SectionBar('F5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 116,
+    key: 'F',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'highway-to-hell',
@@ -156,9 +219,12 @@ const List<SongData> kSongs = [
     artist: 'AC/DC',
     difficulty: 2,
     genre: 'Rock',
-    chords: ['A', 'D', 'G', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('G', 4), SectionBar('E', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E', 4), SectionBar('G', 4), SectionBar('D', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 116,
+    key: 'A',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'brown-sugar',
@@ -166,9 +232,12 @@ const List<SongData> kSongs = [
     artist: 'The Rolling Stones',
     difficulty: 3,
     genre: 'Rock',
-    chords: ['G', 'C', 'D', 'Bb'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('Bb', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bb', 4), SectionBar('D', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 152,
+    key: 'G',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'sympathy-for-the-devil',
@@ -176,9 +245,12 @@ const List<SongData> kSongs = [
     artist: 'The Rolling Stones',
     difficulty: 3,
     genre: 'Rock',
-    chords: ['E', 'D', 'A', 'B'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E', 4), SectionBar('D', 4), SectionBar('A', 4), SectionBar('B', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('B', 4), SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 128,
+    key: 'E',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'layla',
@@ -186,9 +258,12 @@ const List<SongData> kSongs = [
     artist: 'Derek & the Dominos',
     difficulty: 3,
     genre: 'Rock',
-    chords: ['Dm', 'Bb', 'C', 'Am'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Dm', 4), SectionBar('Bb', 4), SectionBar('C', 4), SectionBar('Am', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Am', 4), SectionBar('C', 4), SectionBar('Bb', 4), SectionBar('Dm', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 116,
+    key: 'Dm',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'sunshine-of-your-love',
@@ -196,9 +271,12 @@ const List<SongData> kSongs = [
     artist: 'Cream',
     difficulty: 3,
     genre: 'Rock',
-    chords: ['D5', 'C5', 'A5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D5', 4), SectionBar('C5', 4), SectionBar('A5', 4), SectionBar('G5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G5', 4), SectionBar('A5', 4), SectionBar('C5', 4), SectionBar('D5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'D',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'paint-it-black',
@@ -206,9 +284,12 @@ const List<SongData> kSongs = [
     artist: 'The Rolling Stones',
     difficulty: 3,
     genre: 'Rock',
-    chords: ['Em', 'B7', 'G', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('B7', 4), SectionBar('G', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('G', 4), SectionBar('B7', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 160,
+    key: 'Em',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'black-dog',
@@ -216,9 +297,12 @@ const List<SongData> kSongs = [
     artist: 'Led Zeppelin',
     difficulty: 3,
     genre: 'Rock',
-    chords: ['A5', 'D5', 'E5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A5', 4), SectionBar('D5', 4), SectionBar('E5', 4), SectionBar('G5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G5', 4), SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('A5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 166,
+    key: 'A',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'stairway-to-heaven',
@@ -226,11 +310,13 @@ const List<SongData> kSongs = [
     artist: 'Led Zeppelin',
     difficulty: 3,
     genre: 'Rock',
-    chords: ['Am', 'G', 'F', 'C', 'D', 'Em'],
+    sections: [SongSection(label: 'Intro', bars: [SectionBar('Am', 4), SectionBar('G#', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('G#', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 82,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
-
   // ── Pop ───────────────────────────────────────────────────────────────────
   SongData(
     id: 'let-her-go',
@@ -238,9 +324,11 @@ const List<SongData> kSongs = [
     artist: 'Passenger',
     difficulty: 1,
     genre: 'Pop',
-    chords: ['C', 'G', 'Am', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('F', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 74,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'someone-like-you',
@@ -248,9 +336,11 @@ const List<SongData> kSongs = [
     artist: 'Adele',
     difficulty: 1,
     genre: 'Pop',
-    chords: ['A', 'E', 'F#m', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('E', 4), SectionBar('F#m', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('F#m', 4), SectionBar('E', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 68,
+    key: 'A',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'stand-by-me',
@@ -258,9 +348,11 @@ const List<SongData> kSongs = [
     artist: 'Ben E. King',
     difficulty: 1,
     genre: 'Pop',
-    chords: ['A', 'F#m', 'D', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('F#m', 4), SectionBar('D', 4), SectionBar('E', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E', 4), SectionBar('D', 4), SectionBar('F#m', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'A',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'wonderful-tonight',
@@ -268,9 +360,11 @@ const List<SongData> kSongs = [
     artist: 'Eric Clapton',
     difficulty: 1,
     genre: 'Pop',
-    chords: ['G', 'D', 'C', 'Em'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('C', 4), SectionBar('Em', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Em', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'shape-of-you',
@@ -278,9 +372,11 @@ const List<SongData> kSongs = [
     artist: 'Ed Sheeran',
     difficulty: 1,
     genre: 'Pop',
-    chords: ['C#m', 'F#m', 'A', 'B'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C#m', 4), SectionBar('F#m', 4), SectionBar('A', 4), SectionBar('B', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('B', 4), SectionBar('A', 4), SectionBar('F#m', 4), SectionBar('C#m', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    key: 'C#m',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'perfect',
@@ -288,9 +384,11 @@ const List<SongData> kSongs = [
     artist: 'Ed Sheeran',
     difficulty: 1,
     genre: 'Pop',
-    chords: ['G', 'Em', 'C', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('Em', 4), SectionBar('C', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('C', 4), SectionBar('Em', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 95,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'use-somebody',
@@ -298,19 +396,25 @@ const List<SongData> kSongs = [
     artist: 'Kings of Leon',
     difficulty: 2,
     genre: 'Pop',
-    chords: ['C', 'F', 'Am', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('F', 4), SectionBar('Am', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('Am', 4), SectionBar('F', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 136,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'dont-look-back-in-anger',
-    title: "Don't Look Back in Anger",
+    title: 'Don\'t Look Back in Anger',
     artist: 'Oasis',
     difficulty: 2,
     genre: 'Pop',
-    chords: ['C', 'G', 'Am', 'E', 'F', 'Fm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('E', 4), SectionBar('F', 4), SectionBar('Fm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Fm', 4), SectionBar('F', 4), SectionBar('E', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 68,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'wonderwall',
@@ -318,9 +422,13 @@ const List<SongData> kSongs = [
     artist: 'Oasis',
     difficulty: 2,
     genre: 'Pop',
-    chords: ['Em7', 'G', 'Dsus4', 'A7sus4', 'Cadd9'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('G', 4), SectionBar('D', 4), SectionBar('A', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('Em', 4), SectionBar('G', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 87,
+    capo: 2,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'yellow',
@@ -328,9 +436,12 @@ const List<SongData> kSongs = [
     artist: 'Coldplay',
     difficulty: 2,
     genre: 'Pop',
-    chords: ['B', 'F#', 'E', 'Bbm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('B', 4), SectionBar('F#', 4), SectionBar('E', 4), SectionBar('Bbm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bbm', 4), SectionBar('E', 4), SectionBar('F#', 4), SectionBar('B', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 87,
+    key: 'B',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'lucky',
@@ -338,9 +449,12 @@ const List<SongData> kSongs = [
     artist: 'Jason Mraz',
     difficulty: 2,
     genre: 'Pop',
-    chords: ['G', 'D', 'Em', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('Em', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('Em', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 136,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'angels',
@@ -348,19 +462,25 @@ const List<SongData> kSongs = [
     artist: 'Robbie Williams',
     difficulty: 2,
     genre: 'Pop',
-    chords: ['D', 'A', 'Bm', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('A', 4), SectionBar('Bm', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('Bm', 4), SectionBar('A', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'D',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'cant-help-falling-in-love',
-    title: "Can't Help Falling in Love",
+    title: 'Can\'t Help Falling in Love',
     artist: 'Elvis Presley',
     difficulty: 2,
     genre: 'Pop',
-    chords: ['C', 'Em', 'Am', 'F', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('Em', 4), SectionBar('Am', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 68,
+    key: 'C',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'fix-you',
@@ -368,9 +488,12 @@ const List<SongData> kSongs = [
     artist: 'Coldplay',
     difficulty: 2,
     genre: 'Pop',
-    chords: ['C', 'Em', 'Am', 'F', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('Em', 4), SectionBar('Am', 4), SectionBar('F', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('F', 4), SectionBar('Am', 4), SectionBar('Em', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 69,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'take-me-to-church',
@@ -378,9 +501,12 @@ const List<SongData> kSongs = [
     artist: 'Hozier',
     difficulty: 2,
     genre: 'Pop',
-    chords: ['Am', 'F', 'C', 'G', 'Em'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('Em', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Em', 4), SectionBar('G', 4), SectionBar('C', 4), SectionBar('F', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 130,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hotel-california',
@@ -388,9 +514,13 @@ const List<SongData> kSongs = [
     artist: 'Eagles',
     difficulty: 3,
     genre: 'Pop',
-    chords: ['Am', 'E7', 'G', 'D', 'F', 'C', 'Dm', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Bm', 4), SectionBar('F#m', 4), SectionBar('A', 4), SectionBar('E', 4), SectionBar('G', 4), SectionBar('D', 4), SectionBar('Em', 4), SectionBar('F#m', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 75,
+    capo: 7,
+    key: 'Bm',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'africa',
@@ -398,9 +528,12 @@ const List<SongData> kSongs = [
     artist: 'Toto',
     difficulty: 3,
     genre: 'Pop',
-    chords: ['F#m', 'D', 'A', 'E', 'Bm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('F#m', 4), SectionBar('D', 4), SectionBar('A', 4), SectionBar('E', 4), SectionBar('Bm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bm', 4), SectionBar('E', 4), SectionBar('A', 4), SectionBar('D', 4), SectionBar('F#m', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 92,
+    key: 'F#m',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'fast-car',
@@ -408,9 +541,12 @@ const List<SongData> kSongs = [
     artist: 'Tracy Chapman',
     difficulty: 3,
     genre: 'Pop',
-    chords: ['C', 'G', 'Am', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('F', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 102,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'more-than-words',
@@ -418,9 +554,12 @@ const List<SongData> kSongs = [
     artist: 'Extreme',
     difficulty: 3,
     genre: 'Pop',
-    chords: ['G', 'Cadd9', 'Am7', 'C', 'D', 'Em', 'Dsus4'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('Cadd9', 4), SectionBar('Am7', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('Em', 4), SectionBar('Dsus4', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Dsus4', 4), SectionBar('Em', 4), SectionBar('D', 4), SectionBar('C', 4), SectionBar('Am7', 4), SectionBar('Cadd9', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'tears-in-heaven',
@@ -428,11 +567,13 @@ const List<SongData> kSongs = [
     artist: 'Eric Clapton',
     difficulty: 3,
     genre: 'Pop',
-    chords: ['A', 'E', 'F#m', 'C#', 'D', 'G#m', 'Bm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('E', 4), SectionBar('F#m', 4), SectionBar('C#', 4), SectionBar('D', 4), SectionBar('G#m', 4), SectionBar('Bm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bm', 4), SectionBar('G#m', 4), SectionBar('D', 4), SectionBar('C#', 4), SectionBar('F#m', 4), SectionBar('E', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 80,
+    key: 'A',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
-
   // ── Blues ─────────────────────────────────────────────────────────────────
   SongData(
     id: 'sweet-home-chicago',
@@ -440,9 +581,11 @@ const List<SongData> kSongs = [
     artist: 'Robert Johnson',
     difficulty: 1,
     genre: 'Blues',
-    chords: ['E7', 'A7', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('B7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('B7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    key: 'E7',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'red-house',
@@ -450,9 +593,11 @@ const List<SongData> kSongs = [
     artist: 'Jimi Hendrix',
     difficulty: 1,
     genre: 'Blues',
-    chords: ['B7', 'E7', 'F#7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('B7', 4), SectionBar('B7', 4), SectionBar('B7', 4), SectionBar('B7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('B7', 4), SectionBar('B7', 4), SectionBar('F#7', 4), SectionBar('E7', 4), SectionBar('B7', 4), SectionBar('F#7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 52,
+    key: 'B7',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'the-thrill-is-gone',
@@ -460,9 +605,11 @@ const List<SongData> kSongs = [
     artist: 'B.B. King',
     difficulty: 1,
     genre: 'Blues',
-    chords: ['Bm', 'Em', 'G', 'F#7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Bm', 4), SectionBar('Bm', 4), SectionBar('Bm', 4), SectionBar('Bm', 4), SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('Bm', 4), SectionBar('Bm', 4), SectionBar('G', 4), SectionBar('Em', 4), SectionBar('Bm', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 60,
+    key: 'Bm',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'pride-and-joy',
@@ -470,9 +617,12 @@ const List<SongData> kSongs = [
     artist: 'Stevie Ray Vaughan',
     difficulty: 2,
     genre: 'Blues',
-    chords: ['E7', 'A7', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('B7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('B7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 188,
+    key: 'E7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'crossroad-blues',
@@ -480,9 +630,12 @@ const List<SongData> kSongs = [
     artist: 'Robert Johnson',
     difficulty: 2,
     genre: 'Blues',
-    chords: ['A7', 'D7', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('D7', 4), SectionBar('D7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('D7', 4), SectionBar('A7', 4), SectionBar('E7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 84,
+    key: 'A7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hoodoo-man-blues',
@@ -490,9 +643,12 @@ const List<SongData> kSongs = [
     artist: 'Junior Wells',
     difficulty: 2,
     genre: 'Blues',
-    chords: ['E7', 'A7', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('B7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('B7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 80,
+    key: 'E7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'stormy-monday',
@@ -500,9 +656,12 @@ const List<SongData> kSongs = [
     artist: 'T-Bone Walker',
     difficulty: 2,
     genre: 'Blues',
-    chords: ['G7', 'Cm7', 'Am7', 'D7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G7', 4), SectionBar('G7', 4), SectionBar('G7', 4), SectionBar('G7', 4), SectionBar('Cm7', 4), SectionBar('Cm7', 4), SectionBar('G7', 4), SectionBar('G7', 4), SectionBar('Am7', 4), SectionBar('Cm7', 4), SectionBar('G7', 4), SectionBar('Am7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 62,
+    key: 'G7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'key-to-the-highway',
@@ -510,9 +669,12 @@ const List<SongData> kSongs = [
     artist: 'Big Bill Broonzy',
     difficulty: 2,
     genre: 'Blues',
-    chords: ['A', 'D', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('D', 4), SectionBar('D', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('E7', 4), SectionBar('D', 4), SectionBar('A', 4), SectionBar('E7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 116,
+    key: 'A',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'mannish-boy',
@@ -520,9 +682,12 @@ const List<SongData> kSongs = [
     artist: 'Muddy Waters',
     difficulty: 2,
     genre: 'Blues',
-    chords: ['E7', 'A7', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('B7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('B7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    key: 'E7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'texas-flood',
@@ -530,9 +695,12 @@ const List<SongData> kSongs = [
     artist: 'Stevie Ray Vaughan',
     difficulty: 2,
     genre: 'Blues',
-    chords: ['G7', 'C7', 'D7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G7', 4), SectionBar('G7', 4), SectionBar('G7', 4), SectionBar('G7', 4), SectionBar('C7', 4), SectionBar('C7', 4), SectionBar('G7', 4), SectionBar('G7', 4), SectionBar('D7', 4), SectionBar('C7', 4), SectionBar('G7', 4), SectionBar('D7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 58,
+    key: 'G7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'born-under-a-bad-sign',
@@ -540,9 +708,12 @@ const List<SongData> kSongs = [
     artist: 'Albert King',
     difficulty: 2,
     genre: 'Blues',
-    chords: ['C#7', 'F#7', 'G#7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C#7', 4), SectionBar('C#7', 4), SectionBar('C#7', 4), SectionBar('C#7', 4), SectionBar('F#7', 4), SectionBar('F#7', 4), SectionBar('C#7', 4), SectionBar('C#7', 4), SectionBar('G#7', 4), SectionBar('F#7', 4), SectionBar('C#7', 4), SectionBar('G#7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 80,
+    key: 'C#7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hoochie-coochie-man',
@@ -550,9 +721,12 @@ const List<SongData> kSongs = [
     artist: 'Muddy Waters',
     difficulty: 2,
     genre: 'Blues',
-    chords: ['A7', 'D7', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('D7', 4), SectionBar('D7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('D7', 4), SectionBar('A7', 4), SectionBar('E7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 92,
+    key: 'A7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'still-got-the-blues',
@@ -560,9 +734,12 @@ const List<SongData> kSongs = [
     artist: 'Gary Moore',
     difficulty: 3,
     genre: 'Blues',
-    chords: ['Am', 'Dm', 'E7', 'G', 'C', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('Dm', 4), SectionBar('Dm', 4), SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('E7', 4), SectionBar('Dm', 4), SectionBar('Am', 4), SectionBar('E7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 68,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'little-wing',
@@ -570,19 +747,25 @@ const List<SongData> kSongs = [
     artist: 'Jimi Hendrix',
     difficulty: 3,
     genre: 'Blues',
-    chords: ['Em', 'G', 'Am', 'Em7', 'Bm', 'Bb', 'Am7', 'C', 'D', 'F', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('G', 4), SectionBar('G', 4), SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('Em', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 68,
+    key: 'Em',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'since-i-ve-been-loving-you',
-    title: "Since I've Been Loving You",
+    title: 'Since I\'ve Been Loving You',
     artist: 'Led Zeppelin',
     difficulty: 3,
     genre: 'Blues',
-    chords: ['Cm', 'Fm', 'Bb7', 'Ab', 'G7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Cm', 4), SectionBar('Cm', 4), SectionBar('Cm', 4), SectionBar('Cm', 4), SectionBar('Fm', 4), SectionBar('Fm', 4), SectionBar('Cm', 4), SectionBar('Cm', 4), SectionBar('Bb7', 4), SectionBar('Fm', 4), SectionBar('Cm', 4), SectionBar('Bb7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 60,
+    key: 'Cm',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'whipping-post',
@@ -590,9 +773,12 @@ const List<SongData> kSongs = [
     artist: 'Allman Brothers Band',
     difficulty: 3,
     genre: 'Blues',
-    chords: ['Am', 'G', 'F', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('F', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 82,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'comfortably-numb',
@@ -600,9 +786,12 @@ const List<SongData> kSongs = [
     artist: 'Pink Floyd',
     difficulty: 3,
     genre: 'Blues',
-    chords: ['Bm', 'A', 'G', 'Em', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Bm', 4), SectionBar('Bm', 4), SectionBar('Bm', 4), SectionBar('Bm', 4), SectionBar('A', 4), SectionBar('A', 4), SectionBar('Bm', 4), SectionBar('Bm', 4), SectionBar('G', 4), SectionBar('A', 4), SectionBar('Bm', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 62,
+    key: 'Bm',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'love-struck-baby',
@@ -610,9 +799,12 @@ const List<SongData> kSongs = [
     artist: 'Stevie Ray Vaughan',
     difficulty: 3,
     genre: 'Blues',
-    chords: ['E7', 'A7', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('A7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('E7', 4), SectionBar('B7', 4), SectionBar('A7', 4), SectionBar('E7', 4), SectionBar('B7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 200,
+    key: 'E7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'all-your-love',
@@ -620,9 +812,12 @@ const List<SongData> kSongs = [
     artist: 'Otis Rush',
     difficulty: 3,
     genre: 'Blues',
-    chords: ['Am', 'Dm', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('Dm', 4), SectionBar('Dm', 4), SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('E7', 4), SectionBar('Dm', 4), SectionBar('Am', 4), SectionBar('E7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 132,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'smoking-gun',
@@ -630,11 +825,13 @@ const List<SongData> kSongs = [
     artist: 'Robert Cray',
     difficulty: 3,
     genre: 'Blues',
-    chords: ['Cm7', 'Fm7', 'G7', 'Ab'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Cm7', 4), SectionBar('Cm7', 4), SectionBar('Cm7', 4), SectionBar('Cm7', 4), SectionBar('Fm7', 4), SectionBar('Fm7', 4), SectionBar('Cm7', 4), SectionBar('Cm7', 4), SectionBar('G7', 4), SectionBar('Fm7', 4), SectionBar('Cm7', 4), SectionBar('G7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    key: 'Cm7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
-
   // ── Metal ─────────────────────────────────────────────────────────────────
   SongData(
     id: 'iron-man',
@@ -642,9 +839,11 @@ const List<SongData> kSongs = [
     artist: 'Black Sabbath',
     difficulty: 1,
     genre: 'Metal',
-    chords: ['B5', 'D5', 'E5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('B5', 4), SectionBar('B5', 4), SectionBar('D5', 4), SectionBar('E5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('B5', 4), SectionBar('B5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'B5',
+    strumPattern: 'D·D·D·D·',
   ),
   SongData(
     id: 'paranoid',
@@ -652,9 +851,11 @@ const List<SongData> kSongs = [
     artist: 'Black Sabbath',
     difficulty: 1,
     genre: 'Metal',
-    chords: ['E5', 'D5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('G5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G5', 4), SectionBar('D5', 4), SectionBar('E5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 164,
+    key: 'E5',
+    strumPattern: 'D·D·D·D·',
   ),
   SongData(
     id: 'breaking-the-law',
@@ -662,9 +863,11 @@ const List<SongData> kSongs = [
     artist: 'Judas Priest',
     difficulty: 1,
     genre: 'Metal',
-    chords: ['E5', 'G5', 'A5', 'C5', 'D5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('G5', 4), SectionBar('A5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A5', 4), SectionBar('G5', 4), SectionBar('E5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 152,
+    key: 'E5',
+    strumPattern: 'D·D·D·D·',
   ),
   SongData(
     id: 'highway-star',
@@ -672,9 +875,12 @@ const List<SongData> kSongs = [
     artist: 'Deep Purple',
     difficulty: 2,
     genre: 'Metal',
-    chords: ['G5', 'C5', 'D5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G5', 4), SectionBar('G5', 4), SectionBar('C5', 4), SectionBar('D5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D5', 4), SectionBar('C5', 4), SectionBar('G5', 4), SectionBar('G5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 170,
+    key: 'G5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'ace-of-spades',
@@ -682,9 +888,12 @@ const List<SongData> kSongs = [
     artist: 'Motörhead',
     difficulty: 2,
     genre: 'Metal',
-    chords: ['Am', 'G5', 'F5', 'E5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('G5', 4), SectionBar('F5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F5', 4), SectionBar('G5', 4), SectionBar('Am', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 220,
+    key: 'Am',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'enter-sandman',
@@ -692,9 +901,12 @@ const List<SongData> kSongs = [
     artist: 'Metallica',
     difficulty: 2,
     genre: 'Metal',
-    chords: ['E5', 'G5', 'A5', 'F#5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('G5', 4), SectionBar('A5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A5', 4), SectionBar('G5', 4), SectionBar('E5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 122,
+    key: 'E5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'master-of-puppets',
@@ -702,9 +914,12 @@ const List<SongData> kSongs = [
     artist: 'Metallica',
     difficulty: 2,
     genre: 'Metal',
-    chords: ['Em', 'F5', 'E5', 'Am'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('F5', 4), SectionBar('E5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E5', 4), SectionBar('F5', 4), SectionBar('Em', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 212,
+    key: 'Em',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'for-whom-the-bell-tolls',
@@ -712,9 +927,12 @@ const List<SongData> kSongs = [
     artist: 'Metallica',
     difficulty: 2,
     genre: 'Metal',
-    chords: ['F5', 'Ab5', 'Bb5', 'C5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('F5', 4), SectionBar('F5', 4), SectionBar('Ab5', 4), SectionBar('Bb5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bb5', 4), SectionBar('Ab5', 4), SectionBar('F5', 4), SectionBar('F5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'F5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'war-pigs',
@@ -722,9 +940,12 @@ const List<SongData> kSongs = [
     artist: 'Black Sabbath',
     difficulty: 2,
     genre: 'Metal',
-    chords: ['D5', 'E5', 'G5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D5', 4), SectionBar('D5', 4), SectionBar('E5', 4), SectionBar('G5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G5', 4), SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('D5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 72,
+    key: 'D5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'holy-diver',
@@ -732,9 +953,12 @@ const List<SongData> kSongs = [
     artist: 'Dio',
     difficulty: 2,
     genre: 'Metal',
-    chords: ['Dm', 'Am', 'C', 'Bb', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Dm', 4), SectionBar('Dm', 4), SectionBar('Am', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('Am', 4), SectionBar('Dm', 4), SectionBar('Dm', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 88,
+    key: 'Dm',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'crazy-train',
@@ -742,19 +966,25 @@ const List<SongData> kSongs = [
     artist: 'Ozzy Osbourne',
     difficulty: 2,
     genre: 'Metal',
-    chords: ['A5', 'F#5', 'D5', 'E5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A5', 4), SectionBar('A5', 4), SectionBar('F#5', 4), SectionBar('D5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D5', 4), SectionBar('F#5', 4), SectionBar('A5', 4), SectionBar('A5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 138,
+    key: 'A5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'you-ve-got-another-thing-coming',
-    title: "You've Got Another Thing Comin'",
+    title: 'You\'ve Got Another Thing Comin\'',
     artist: 'Judas Priest',
     difficulty: 2,
     genre: 'Metal',
-    chords: ['E5', 'A5', 'B5', 'D5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('A5', 4), SectionBar('B5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('B5', 4), SectionBar('A5', 4), SectionBar('E5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 152,
+    key: 'E5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'fade-to-black',
@@ -762,9 +992,12 @@ const List<SongData> kSongs = [
     artist: 'Metallica',
     difficulty: 3,
     genre: 'Metal',
-    chords: ['Am', 'E', 'D', 'G', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('Am', 4), SectionBar('E', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('E', 4), SectionBar('Am', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'Am',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'eruption',
@@ -772,9 +1005,12 @@ const List<SongData> kSongs = [
     artist: 'Van Halen',
     difficulty: 3,
     genre: 'Metal',
-    chords: ['D5', 'C5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D5', 4), SectionBar('D5', 4), SectionBar('C5', 4), SectionBar('A5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A5', 4), SectionBar('C5', 4), SectionBar('D5', 4), SectionBar('D5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 136,
+    key: 'D5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'raining-blood',
@@ -782,10 +1018,13 @@ const List<SongData> kSongs = [
     artist: 'Slayer',
     difficulty: 3,
     genre: 'Metal',
-    chords: ['Em', 'D#5', 'D5', 'C#5', 'C5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('D#5', 4), SectionBar('D5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D5', 4), SectionBar('D#5', 4), SectionBar('Em', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 200,
     tuning: 'Drop D',
+    key: 'Em',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'battery',
@@ -793,9 +1032,12 @@ const List<SongData> kSongs = [
     artist: 'Metallica',
     difficulty: 3,
     genre: 'Metal',
-    chords: ['C5', 'B5', 'Bb5', 'A5', 'E5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C5', 4), SectionBar('C5', 4), SectionBar('B5', 4), SectionBar('Bb5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bb5', 4), SectionBar('B5', 4), SectionBar('C5', 4), SectionBar('C5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 200,
+    key: 'C5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'nothing-else-matters',
@@ -803,9 +1045,12 @@ const List<SongData> kSongs = [
     artist: 'Metallica',
     difficulty: 3,
     genre: 'Metal',
-    chords: ['Em', 'Am', 'C', 'D', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('Am', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('Am', 4), SectionBar('Em', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 69,
+    key: 'Em',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'through-the-fire-and-flames',
@@ -813,9 +1058,12 @@ const List<SongData> kSongs = [
     artist: 'DragonForce',
     difficulty: 3,
     genre: 'Metal',
-    chords: ['E5', 'A5', 'B5', 'C#5', 'G#5', 'F#5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('E5', 4), SectionBar('A5', 4), SectionBar('B5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('B5', 4), SectionBar('A5', 4), SectionBar('E5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 200,
+    key: 'E5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'zero-signal',
@@ -823,10 +1071,13 @@ const List<SongData> kSongs = [
     artist: 'Fear Factory',
     difficulty: 3,
     genre: 'Metal',
-    chords: ['D5', 'C5', 'Bb5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D5', 4), SectionBar('D5', 4), SectionBar('C5', 4), SectionBar('Bb5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bb5', 4), SectionBar('C5', 4), SectionBar('D5', 4), SectionBar('D5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 148,
     tuning: 'Drop D',
+    key: 'D5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'cemetary-gates',
@@ -834,21 +1085,26 @@ const List<SongData> kSongs = [
     artist: 'Pantera',
     difficulty: 3,
     genre: 'Metal',
-    chords: ['Em', 'Am', 'D', 'G', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('Em', 4), SectionBar('Am', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('Am', 4), SectionBar('Em', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'Em',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
-
   // ── Folk / Acoustic ───────────────────────────────────────────────────────
   SongData(
     id: 'knockin-on-heavens-door',
-    title: "Knockin' on Heaven's Door",
+    title: 'Knockin\' on Heaven\'s Door',
     artist: 'Bob Dylan',
     difficulty: 1,
     genre: 'Folk / Acoustic',
-    chords: ['G', 'D', 'Am', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('Am', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('Am', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 68,
+    capo: 2,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'blowin-in-the-wind',
@@ -856,9 +1112,12 @@ const List<SongData> kSongs = [
     artist: 'Bob Dylan',
     difficulty: 1,
     genre: 'Folk / Acoustic',
-    chords: ['D', 'G', 'A'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('G', 4), SectionBar('A', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('G', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 88,
+    capo: 2,
+    key: 'D',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'horse-with-no-name',
@@ -866,9 +1125,12 @@ const List<SongData> kSongs = [
     artist: 'America',
     difficulty: 1,
     genre: 'Folk / Acoustic',
-    chords: ['Em', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 78,
+    capo: 2,
+    key: 'Em',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'dust-in-the-wind',
@@ -876,9 +1138,12 @@ const List<SongData> kSongs = [
     artist: 'Kansas',
     difficulty: 1,
     genre: 'Folk / Acoustic',
-    chords: ['C', 'Am', 'G', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    capo: 2,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'leaving-on-a-jet-plane',
@@ -886,9 +1151,12 @@ const List<SongData> kSongs = [
     artist: 'John Denver',
     difficulty: 1,
     genre: 'Folk / Acoustic',
-    chords: ['G', 'C', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    capo: 2,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'country-roads',
@@ -896,9 +1164,12 @@ const List<SongData> kSongs = [
     artist: 'John Denver',
     difficulty: 1,
     genre: 'Folk / Acoustic',
-    chords: ['G', 'Em', 'D', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('Em', 4), SectionBar('D', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('D', 4), SectionBar('Em', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 84,
+    capo: 2,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'the-sound-of-silence',
@@ -906,9 +1177,13 @@ const List<SongData> kSongs = [
     artist: 'Simon & Garfunkel',
     difficulty: 2,
     genre: 'Folk / Acoustic',
-    chords: ['Am', 'G', 'F', 'C', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('G', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('E', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E', 4), SectionBar('C', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    capo: 2,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'scarborough-fair',
@@ -916,9 +1191,13 @@ const List<SongData> kSongs = [
     artist: 'Simon & Garfunkel',
     difficulty: 2,
     genre: 'Folk / Acoustic',
-    chords: ['Am', 'G', 'C', 'D', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('E', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E', 4), SectionBar('D', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 88,
+    capo: 2,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'the-boxer',
@@ -926,9 +1205,13 @@ const List<SongData> kSongs = [
     artist: 'Simon & Garfunkel',
     difficulty: 2,
     genre: 'Folk / Acoustic',
-    chords: ['C', 'Am', 'G', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('F', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 80,
+    capo: 2,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'norwegianwood',
@@ -936,9 +1219,13 @@ const List<SongData> kSongs = [
     artist: 'The Beatles',
     difficulty: 2,
     genre: 'Folk / Acoustic',
-    chords: ['D', 'C', 'G', 'Dm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('Dm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Dm', 4), SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 64,
+    capo: 2,
+    key: 'D',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'blackbird',
@@ -946,9 +1233,13 @@ const List<SongData> kSongs = [
     artist: 'The Beatles',
     difficulty: 2,
     genre: 'Folk / Acoustic',
-    chords: ['G', 'Am7', 'C', 'G7', 'F', 'Em', 'Dm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('Am7', 4), SectionBar('C', 4), SectionBar('G7', 4), SectionBar('F', 4), SectionBar('Em', 4), SectionBar('Dm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Dm', 4), SectionBar('Em', 4), SectionBar('F', 4), SectionBar('G7', 4), SectionBar('C', 4), SectionBar('Am7', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 94,
+    capo: 2,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'fire-and-rain',
@@ -956,9 +1247,13 @@ const List<SongData> kSongs = [
     artist: 'James Taylor',
     difficulty: 2,
     genre: 'Folk / Acoustic',
-    chords: ['A', 'D', 'G', 'Bm', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('G', 4), SectionBar('Bm', 4), SectionBar('E7', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E7', 4), SectionBar('Bm', 4), SectionBar('G', 4), SectionBar('D', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 78,
+    capo: 2,
+    key: 'A',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'the-house-of-the-rising-sun',
@@ -966,9 +1261,13 @@ const List<SongData> kSongs = [
     artist: 'The Animals',
     difficulty: 2,
     genre: 'Folk / Acoustic',
-    chords: ['Am', 'C', 'D', 'F', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('F', 4), SectionBar('E', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E', 4), SectionBar('F', 4), SectionBar('D', 4), SectionBar('C', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    capo: 2,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hallelujah',
@@ -976,9 +1275,13 @@ const List<SongData> kSongs = [
     artist: 'Leonard Cohen',
     difficulty: 2,
     genre: 'Folk / Acoustic',
-    chords: ['C', 'Am', 'F', 'G', 'Em'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('Am', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('Em', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Em', 4), SectionBar('G', 4), SectionBar('F', 4), SectionBar('Am', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 64,
+    capo: 2,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'wish-you-were-here',
@@ -986,9 +1289,13 @@ const List<SongData> kSongs = [
     artist: 'Pink Floyd',
     difficulty: 2,
     genre: 'Folk / Acoustic',
-    chords: ['Em7', 'G', 'A', 'C', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em7', 4), SectionBar('G', 4), SectionBar('A', 4), SectionBar('C', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('C', 4), SectionBar('A', 4), SectionBar('G', 4), SectionBar('Em7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 63,
+    capo: 2,
+    key: 'Em7',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'big-yellow-taxi',
@@ -996,9 +1303,13 @@ const List<SongData> kSongs = [
     artist: 'Joni Mitchell',
     difficulty: 3,
     genre: 'Folk / Acoustic',
-    chords: ['A', 'D', 'E', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4), SectionBar('B7', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('B7', 4), SectionBar('E', 4), SectionBar('D', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 130,
+    capo: 2,
+    key: 'A',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'both-sides-now',
@@ -1006,9 +1317,13 @@ const List<SongData> kSongs = [
     artist: 'Joni Mitchell',
     difficulty: 3,
     genre: 'Folk / Acoustic',
-    chords: ['G', 'D', 'Em', 'C', 'Am'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('Em', 4), SectionBar('C', 4), SectionBar('Am', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Am', 4), SectionBar('C', 4), SectionBar('Em', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 78,
+    capo: 2,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'tangerine',
@@ -1016,10 +1331,14 @@ const List<SongData> kSongs = [
     artist: 'Led Zeppelin',
     difficulty: 3,
     genre: 'Folk / Acoustic',
-    chords: ['G', 'D', 'A', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('A', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('A', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 68,
     tuning: 'Open G',
+    capo: 2,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'bron-y-aur-stomp',
@@ -1027,9 +1346,13 @@ const List<SongData> kSongs = [
     artist: 'Led Zeppelin',
     difficulty: 3,
     genre: 'Folk / Acoustic',
-    chords: ['C', 'F', 'G', 'Am', 'Dm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('Dm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Dm', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('F', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 160,
+    capo: 2,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'the-needle-and-the-damage-done',
@@ -1037,21 +1360,26 @@ const List<SongData> kSongs = [
     artist: 'Neil Young',
     difficulty: 3,
     genre: 'Folk / Acoustic',
-    chords: ['D', 'C', 'G', 'Am', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('E7', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E7', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 88,
+    capo: 2,
+    key: 'D',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
-
-  // ── Klassik (fingerstyle) ─────────────────────────────────────────────────
+  // ── Klassik ───────────────────────────────────────────────────────────────
   SongData(
     id: 'romanza',
     title: 'Romanza (Spanish Romance)',
     artist: 'Anon.',
     difficulty: 1,
     genre: 'Klassik',
-    chords: ['Em', 'B7', 'Am', 'C', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('B7', 4), SectionBar('Am', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'Em',
+    strumPattern: 'D···D···',
   ),
   SongData(
     id: 'ode-an-die-freude',
@@ -1059,9 +1387,11 @@ const List<SongData> kSongs = [
     artist: 'Beethoven',
     difficulty: 1,
     genre: 'Klassik',
-    chords: ['E', 'A', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E', 4), SectionBar('A', 4), SectionBar('B7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'E',
+    strumPattern: 'D···D···',
   ),
   SongData(
     id: 'greensleeves',
@@ -1069,9 +1399,11 @@ const List<SongData> kSongs = [
     artist: 'Traditional',
     difficulty: 1,
     genre: 'Klassik',
-    chords: ['Am', 'G', 'E', 'C', 'F', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('G', 4), SectionBar('E', 4), SectionBar('C', 4), SectionBar('F', 4), SectionBar('E7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'Am',
+    strumPattern: 'D···D···',
   ),
   SongData(
     id: 'minuet-in-g',
@@ -1079,9 +1411,11 @@ const List<SongData> kSongs = [
     artist: 'Bach / Petzold',
     difficulty: 1,
     genre: 'Klassik',
-    chords: ['G', 'C', 'D', 'Em', 'Am'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('Em', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'G',
+    strumPattern: 'D···D···',
   ),
   SongData(
     id: 'canon-in-d',
@@ -1089,9 +1423,12 @@ const List<SongData> kSongs = [
     artist: 'Pachelbel',
     difficulty: 2,
     genre: 'Klassik',
-    chords: ['D', 'A', 'Bm', 'F#m', 'G', 'Em'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('A', 4), SectionBar('Bm', 4), SectionBar('F#m', 4), SectionBar('G', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 66,
+    key: 'D',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'fur-elise',
@@ -1099,9 +1436,12 @@ const List<SongData> kSongs = [
     artist: 'Beethoven',
     difficulty: 2,
     genre: 'Klassik',
-    chords: ['Am', 'E7', 'F', 'C', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('E7', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 92,
+    key: 'Am',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'jesu-joy-of-mans-desiring',
@@ -1109,9 +1449,12 @@ const List<SongData> kSongs = [
     artist: 'Bach',
     difficulty: 2,
     genre: 'Klassik',
-    chords: ['G', 'Em', 'Am', 'D', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('Em', 4), SectionBar('Am', 4), SectionBar('D', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 78,
+    key: 'G',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'bourree-e-minor',
@@ -1119,9 +1462,12 @@ const List<SongData> kSongs = [
     artist: 'Bach',
     difficulty: 2,
     genre: 'Klassik',
-    chords: ['Em', 'Am', 'B7', 'D', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 4), SectionBar('Am', 4), SectionBar('B7', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 120,
+    key: 'Em',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'lagrima',
@@ -1129,9 +1475,12 @@ const List<SongData> kSongs = [
     artist: 'Francisco Tárrega',
     difficulty: 2,
     genre: 'Klassik',
-    chords: ['E', 'B7', 'Am', 'C', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E', 4), SectionBar('B7', 4), SectionBar('Am', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 60,
+    key: 'E',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'adelita',
@@ -1139,9 +1488,12 @@ const List<SongData> kSongs = [
     artist: 'Francisco Tárrega',
     difficulty: 2,
     genre: 'Klassik',
-    chords: ['D', 'A7', 'Gm', 'Dm', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('A7', 4), SectionBar('Gm', 4), SectionBar('Dm', 4), SectionBar('E7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    key: 'D',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'asturias',
@@ -1149,9 +1501,12 @@ const List<SongData> kSongs = [
     artist: 'Isaac Albéniz',
     difficulty: 3,
     genre: 'Klassik',
-    chords: ['Am', 'E7', 'G', 'Dm', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('E7', 4), SectionBar('G', 4), SectionBar('Dm', 4), SectionBar('F', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 116,
+    key: 'Am',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'recuerdos-de-la-alhambra',
@@ -1159,9 +1514,12 @@ const List<SongData> kSongs = [
     artist: 'Francisco Tárrega',
     difficulty: 3,
     genre: 'Klassik',
-    chords: ['Am', 'E7', 'Dm', 'G', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('E7', 4), SectionBar('Dm', 4), SectionBar('G', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 80,
+    key: 'Am',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'capricho-arabe',
@@ -1169,9 +1527,12 @@ const List<SongData> kSongs = [
     artist: 'Francisco Tárrega',
     difficulty: 3,
     genre: 'Klassik',
-    chords: ['Dm', 'A7', 'Gm', 'C', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Dm', 4), SectionBar('A7', 4), SectionBar('Gm', 4), SectionBar('C', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'Dm',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'variations-on-a-theme-by-handel',
@@ -1179,9 +1540,12 @@ const List<SongData> kSongs = [
     artist: 'Mauro Giuliani',
     difficulty: 3,
     genre: 'Klassik',
-    chords: ['A', 'D', 'E7', 'Bm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E7', 4), SectionBar('Bm', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 88,
+    key: 'A',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'andantino',
@@ -1189,9 +1553,12 @@ const List<SongData> kSongs = [
     artist: 'Matteo Carcassi',
     difficulty: 2,
     genre: 'Klassik',
-    chords: ['C', 'G7', 'Am', 'F', 'Dm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('G7', 4), SectionBar('Am', 4), SectionBar('F', 4), SectionBar('Dm', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 84,
+    key: 'C',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'prelude-in-d-minor',
@@ -1199,9 +1566,12 @@ const List<SongData> kSongs = [
     artist: 'Heitor Villa-Lobos',
     difficulty: 3,
     genre: 'Klassik',
-    chords: ['Dm', 'A7', 'Gm', 'C', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Dm', 4), SectionBar('A7', 4), SectionBar('Gm', 4), SectionBar('C', 4), SectionBar('F', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 60,
+    key: 'Dm',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'malaguena',
@@ -1209,9 +1579,12 @@ const List<SongData> kSongs = [
     artist: 'Traditional / Ernesto Lecuona',
     difficulty: 3,
     genre: 'Klassik',
-    chords: ['Am', 'E7', 'F', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('E7', 4), SectionBar('F', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 140,
+    key: 'Am',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'etude-op-35-no-22',
@@ -1219,9 +1592,12 @@ const List<SongData> kSongs = [
     artist: 'Fernando Sor',
     difficulty: 3,
     genre: 'Klassik',
-    chords: ['G', 'D7', 'C', 'Em', 'Am'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('D7', 4), SectionBar('C', 4), SectionBar('Em', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    key: 'G',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'allegro-moderato',
@@ -1229,9 +1605,12 @@ const List<SongData> kSongs = [
     artist: 'Fernando Carulli',
     difficulty: 2,
     genre: 'Klassik',
-    chords: ['C', 'G7', 'F', 'Am', 'Dm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('G7', 4), SectionBar('F', 4), SectionBar('Am', 4), SectionBar('Dm', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    key: 'C',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'estudio-in-e-major',
@@ -1239,11 +1618,13 @@ const List<SongData> kSongs = [
     artist: 'Leo Brouwer',
     difficulty: 3,
     genre: 'Klassik',
-    chords: ['E', 'A', 'B7', 'C#m'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E', 4), SectionBar('A', 4), SectionBar('B7', 4), SectionBar('C#m', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 92,
+    key: 'E',
+    strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
-
   // ── Deutsch ───────────────────────────────────────────────────────────────
   SongData(
     id: 'sonne',
@@ -1251,9 +1632,11 @@ const List<SongData> kSongs = [
     artist: 'Rammstein',
     difficulty: 1,
     genre: 'Deutsch',
-    chords: ['E5', 'A5', 'D5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('A5', 4), SectionBar('D5', 4), SectionBar('G5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G5', 4), SectionBar('D5', 4), SectionBar('A5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'E5',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'ich-will',
@@ -1261,9 +1644,11 @@ const List<SongData> kSongs = [
     artist: 'Rammstein',
     difficulty: 1,
     genre: 'Deutsch',
-    chords: ['D5', 'C5', 'A5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D5', 4), SectionBar('C5', 4), SectionBar('A5', 4), SectionBar('G5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G5', 4), SectionBar('A5', 4), SectionBar('C5', 4), SectionBar('D5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 130,
+    key: 'D5',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'du-hast',
@@ -1271,9 +1656,11 @@ const List<SongData> kSongs = [
     artist: 'Rammstein',
     difficulty: 1,
     genre: 'Deutsch',
-    chords: ['E5', 'G5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('G5', 4), SectionBar('A5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A5', 4), SectionBar('G5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 136,
+    key: 'E5',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'wind-of-change',
@@ -1281,9 +1668,11 @@ const List<SongData> kSongs = [
     artist: 'Scorpions',
     difficulty: 1,
     genre: 'Deutsch',
-    chords: ['C', 'G', 'Am', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('F', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 70,
+    key: 'C',
+    strumPattern: 'D·DU·UDU',
   ),
   SongData(
     id: 'rock-you-like-a-hurricane',
@@ -1291,9 +1680,12 @@ const List<SongData> kSongs = [
     artist: 'Scorpions',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['E5', 'G5', 'A5', 'C5', 'D5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('G5', 4), SectionBar('A5', 4), SectionBar('C5', 4), SectionBar('D5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D5', 4), SectionBar('C5', 4), SectionBar('A5', 4), SectionBar('G5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 124,
+    key: 'E5',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'still-loving-you',
@@ -1301,9 +1693,12 @@ const List<SongData> kSongs = [
     artist: 'Scorpions',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['Am', 'G', 'F', 'E', 'C', 'Dm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('G', 4), SectionBar('F', 4), SectionBar('E', 4), SectionBar('C', 4), SectionBar('Dm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Dm', 4), SectionBar('C', 4), SectionBar('E', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 66,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'stadtaffe',
@@ -1311,9 +1706,12 @@ const List<SongData> kSongs = [
     artist: 'Peter Fox',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['Am', 'G', 'C', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('G', 4), SectionBar('C', 4), SectionBar('F', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'schwarz-zu-blau',
@@ -1321,9 +1719,12 @@ const List<SongData> kSongs = [
     artist: 'Peter Fox',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['Dm', 'Am', 'C', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Dm', 4), SectionBar('Am', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('Am', 4), SectionBar('Dm', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 92,
+    key: 'Dm',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'ein-kompliment',
@@ -1331,9 +1732,12 @@ const List<SongData> kSongs = [
     artist: 'Sportfreunde Stiller',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['D', 'A', 'G', 'Bm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('A', 4), SectionBar('G', 4), SectionBar('Bm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bm', 4), SectionBar('G', 4), SectionBar('A', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'D',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hier-kommt-alex',
@@ -1341,9 +1745,12 @@ const List<SongData> kSongs = [
     artist: 'Die Toten Hosen',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['A', 'D', 'E', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('E', 4), SectionBar('D', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 148,
+    key: 'A',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'azzurro',
@@ -1351,9 +1758,12 @@ const List<SongData> kSongs = [
     artist: 'Rosenstolz',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['Am', 'F', 'C', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('F', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'perfekte-welle',
@@ -1361,9 +1771,12 @@ const List<SongData> kSongs = [
     artist: 'Juli',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['D', 'Bm', 'G', 'A'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('Bm', 4), SectionBar('G', 4), SectionBar('A', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('G', 4), SectionBar('Bm', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 138,
+    key: 'D',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'nummer-eins',
@@ -1371,9 +1784,12 @@ const List<SongData> kSongs = [
     artist: 'Die Ärzte',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['G', 'C', 'D', 'Em'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('Em', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Em', 4), SectionBar('D', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 120,
+    key: 'G',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'radio-gaga',
@@ -1381,9 +1797,12 @@ const List<SongData> kSongs = [
     artist: 'Die Ärzte',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['D', 'A', 'Bm', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('A', 4), SectionBar('Bm', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('Bm', 4), SectionBar('A', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 176,
+    key: 'D',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'durch-den-monsun',
@@ -1391,9 +1810,12 @@ const List<SongData> kSongs = [
     artist: 'Tokio Hotel',
     difficulty: 2,
     genre: 'Deutsch',
-    chords: ['Am', 'F', 'C', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('F', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 140,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'du-riechst-so-gut',
@@ -1401,9 +1823,12 @@ const List<SongData> kSongs = [
     artist: 'Rammstein',
     difficulty: 3,
     genre: 'Deutsch',
-    chords: ['E5', 'D5', 'A5', 'F5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 4), SectionBar('D5', 4), SectionBar('A5', 4), SectionBar('F5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F5', 4), SectionBar('A5', 4), SectionBar('D5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 124,
+    key: 'E5',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'feuer-frei',
@@ -1411,9 +1836,12 @@ const List<SongData> kSongs = [
     artist: 'Rammstein',
     difficulty: 3,
     genre: 'Deutsch',
-    chords: ['D5', 'C5', 'Bb5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D5', 4), SectionBar('C5', 4), SectionBar('Bb5', 4), SectionBar('G5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G5', 4), SectionBar('Bb5', 4), SectionBar('C5', 4), SectionBar('D5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 138,
+    key: 'D5',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'kein-zurueck',
@@ -1421,9 +1849,12 @@ const List<SongData> kSongs = [
     artist: 'Unheilig',
     difficulty: 3,
     genre: 'Deutsch',
-    chords: ['Am', 'F', 'C', 'G', 'Em'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('Em', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Em', 4), SectionBar('G', 4), SectionBar('C', 4), SectionBar('F', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 128,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'ich-und-ich-stark',
@@ -1431,9 +1862,12 @@ const List<SongData> kSongs = [
     artist: 'Ich + Ich',
     difficulty: 3,
     genre: 'Deutsch',
-    chords: ['Am', 'G', 'F', 'C', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('G', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('E', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E', 4), SectionBar('C', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 130,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'engel',
@@ -1441,11 +1875,13 @@ const List<SongData> kSongs = [
     artist: 'Rammstein',
     difficulty: 3,
     genre: 'Deutsch',
-    chords: ['Am', 'F', 'G', 'C', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('C', 4), SectionBar('E', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('F', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 104,
+    key: 'Am',
+    strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
-
   // ── Punk ──────────────────────────────────────────────────────────────────
   SongData(
     id: 'basket-case',
@@ -1453,9 +1889,11 @@ const List<SongData> kSongs = [
     artist: 'Green Day',
     difficulty: 1,
     genre: 'Punk',
-    chords: ['Eb', 'Bb', 'C', 'G', 'Ab'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Eb', 2), SectionBar('Bb', 2), SectionBar('C', 2), SectionBar('G', 2), SectionBar('Ab', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Eb', 4), SectionBar('Bb', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('Ab', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 174,
+    key: 'Eb',
+    strumPattern: 'D·D·D·D·',
   ),
   SongData(
     id: 'when-i-come-around',
@@ -1463,9 +1901,11 @@ const List<SongData> kSongs = [
     artist: 'Green Day',
     difficulty: 1,
     genre: 'Punk',
-    chords: ['G', 'D', 'Em', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 2), SectionBar('D', 2), SectionBar('Em', 2), SectionBar('C', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('Em', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 108,
+    key: 'G',
+    strumPattern: 'D·D·D·D·',
   ),
   SongData(
     id: 'american-idiot',
@@ -1473,9 +1913,11 @@ const List<SongData> kSongs = [
     artist: 'Green Day',
     difficulty: 1,
     genre: 'Punk',
-    chords: ['A5', 'D5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A5', 2), SectionBar('D5', 2), SectionBar('G5', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A5', 4), SectionBar('D5', 4), SectionBar('G5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 186,
+    key: 'A5',
+    strumPattern: 'D·D·D·D·',
   ),
   SongData(
     id: 'anarchy-in-the-uk',
@@ -1483,9 +1925,11 @@ const List<SongData> kSongs = [
     artist: 'Sex Pistols',
     difficulty: 1,
     genre: 'Punk',
-    chords: ['A5', 'D5', 'E5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A5', 2), SectionBar('D5', 2), SectionBar('E5', 2), SectionBar('G5', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A5', 4), SectionBar('D5', 4), SectionBar('E5', 4), SectionBar('G5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 200,
+    key: 'A5',
+    strumPattern: 'D·D·D·D·',
   ),
   SongData(
     id: 'should-i-stay-or-should-i-go',
@@ -1493,9 +1937,11 @@ const List<SongData> kSongs = [
     artist: 'The Clash',
     difficulty: 1,
     genre: 'Punk',
-    chords: ['D5', 'G5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D5', 2), SectionBar('G5', 2), SectionBar('A5', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D5', 4), SectionBar('G5', 4), SectionBar('A5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'D5',
+    strumPattern: 'D·D·D·D·',
   ),
   SongData(
     id: 'london-calling',
@@ -1503,9 +1949,12 @@ const List<SongData> kSongs = [
     artist: 'The Clash',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['Em', 'Am', 'D', 'G', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Em', 2), SectionBar('Am', 2), SectionBar('D', 2), SectionBar('G', 2), SectionBar('F', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Em', 4), SectionBar('Am', 4), SectionBar('D', 4), SectionBar('G', 4), SectionBar('F', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 152,
+    key: 'Em',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'rockaway-beach',
@@ -1513,9 +1962,12 @@ const List<SongData> kSongs = [
     artist: 'Ramones',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['D', 'A', 'G', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 2), SectionBar('A', 2), SectionBar('G', 2), SectionBar('E', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('A', 4), SectionBar('G', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 176,
+    key: 'D',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'blitzkrieg-bop',
@@ -1523,9 +1975,12 @@ const List<SongData> kSongs = [
     artist: 'Ramones',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['A', 'D', 'E', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 2), SectionBar('D', 2), SectionBar('E', 2), SectionBar('G', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 190,
+    key: 'A',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'i-wanna-be-sedated',
@@ -1533,9 +1988,12 @@ const List<SongData> kSongs = [
     artist: 'Ramones',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['A', 'D', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 2), SectionBar('D', 2), SectionBar('E', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 190,
+    key: 'A',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'brain-stew',
@@ -1543,9 +2001,12 @@ const List<SongData> kSongs = [
     artist: 'Green Day',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['A5', 'G#5', 'G5', 'F#5', 'F5', 'E5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A5', 2), SectionBar('G#5', 2), SectionBar('G5', 2), SectionBar('F#5', 2), SectionBar('F5', 2), SectionBar('E5', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A5', 4), SectionBar('G#5', 4), SectionBar('G5', 4), SectionBar('F#5', 4), SectionBar('F5', 4), SectionBar('E5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'A5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'all-the-small-things',
@@ -1553,9 +2014,12 @@ const List<SongData> kSongs = [
     artist: 'Blink-182',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['C', 'G', 'F', 'Bb'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 2), SectionBar('G', 2), SectionBar('F', 2), SectionBar('Bb', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('F', 4), SectionBar('Bb', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 148,
+    key: 'C',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'what-i-got',
@@ -1563,9 +2027,12 @@ const List<SongData> kSongs = [
     artist: 'Sublime',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['D', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 2), SectionBar('G', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 92,
+    key: 'D',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'pretty-fly-for-a-white-guy',
@@ -1573,9 +2040,12 @@ const List<SongData> kSongs = [
     artist: 'The Offspring',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['Bb', 'C5', 'F5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Bb', 2), SectionBar('C5', 2), SectionBar('F5', 2), SectionBar('G5', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bb', 4), SectionBar('C5', 4), SectionBar('F5', 4), SectionBar('G5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 190,
+    key: 'Bb',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'self-esteem',
@@ -1583,9 +2053,12 @@ const List<SongData> kSongs = [
     artist: 'The Offspring',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['Bb', 'F', 'G', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Bb', 2), SectionBar('F', 2), SectionBar('G', 2), SectionBar('C', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bb', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 104,
+    key: 'Bb',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'holiday-green-day',
@@ -1593,9 +2066,12 @@ const List<SongData> kSongs = [
     artist: 'Green Day',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['Fm', 'Db', 'Ab', 'Eb', 'Bb'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Fm', 2), SectionBar('Db', 2), SectionBar('Ab', 2), SectionBar('Eb', 2), SectionBar('Bb', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Fm', 4), SectionBar('Db', 4), SectionBar('Ab', 4), SectionBar('Eb', 4), SectionBar('Bb', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 148,
+    key: 'Fm',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'bad-reputation',
@@ -1603,9 +2079,12 @@ const List<SongData> kSongs = [
     artist: 'Joan Jett',
     difficulty: 2,
     genre: 'Punk',
-    chords: ['G', 'C', 'D', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 2), SectionBar('C', 2), SectionBar('D', 2), SectionBar('F', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('F', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 162,
+    key: 'G',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'ever-fallen-in-love',
@@ -1613,9 +2092,12 @@ const List<SongData> kSongs = [
     artist: 'Buzzcocks',
     difficulty: 3,
     genre: 'Punk',
-    chords: ['E', 'A', 'B', 'C#m'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E', 2), SectionBar('A', 2), SectionBar('B', 2), SectionBar('C#m', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E', 4), SectionBar('A', 4), SectionBar('B', 4), SectionBar('C#m', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 136,
+    key: 'E',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'common-people',
@@ -1623,9 +2105,12 @@ const List<SongData> kSongs = [
     artist: 'Pulp',
     difficulty: 3,
     genre: 'Punk',
-    chords: ['G', 'C', 'D', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 2), SectionBar('C', 2), SectionBar('D', 2), SectionBar('F', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('F', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 130,
+    key: 'G',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'sex-and-violence',
@@ -1633,9 +2118,12 @@ const List<SongData> kSongs = [
     artist: 'The Exploited',
     difficulty: 3,
     genre: 'Punk',
-    chords: ['E5', 'A5', 'D5', 'G5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E5', 2), SectionBar('A5', 2), SectionBar('D5', 2), SectionBar('G5', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('E5', 4), SectionBar('A5', 4), SectionBar('D5', 4), SectionBar('G5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 200,
+    key: 'E5',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'in-the-city',
@@ -1643,11 +2131,13 @@ const List<SongData> kSongs = [
     artist: 'The Jam',
     difficulty: 3,
     genre: 'Punk',
-    chords: ['A', 'D', 'E', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 2), SectionBar('D', 2), SectionBar('E', 2), SectionBar('G', 2)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 172,
+    key: 'A',
+    strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
-
   // ── Reggae / Ska ──────────────────────────────────────────────────────────
   SongData(
     id: 'no-woman-no-cry',
@@ -1655,9 +2145,11 @@ const List<SongData> kSongs = [
     artist: 'Bob Marley',
     difficulty: 1,
     genre: 'Reggae / Ska',
-    chords: ['C', 'G', 'Am', 'F'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('Am', 4), SectionBar('F', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'C',
+    strumPattern: '·U·U·U·U',
   ),
   SongData(
     id: 'three-little-birds',
@@ -1665,9 +2157,11 @@ const List<SongData> kSongs = [
     artist: 'Bob Marley',
     difficulty: 1,
     genre: 'Reggae / Ska',
-    chords: ['A', 'D', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'A',
+    strumPattern: '·U·U·U·U',
   ),
   SongData(
     id: 'stir-it-up',
@@ -1675,9 +2169,11 @@ const List<SongData> kSongs = [
     artist: 'Bob Marley',
     difficulty: 1,
     genre: 'Reggae / Ska',
-    chords: ['A', 'D', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 80,
+    key: 'A',
+    strumPattern: '·U·U·U·U',
   ),
   SongData(
     id: 'buffalo-soldier',
@@ -1685,9 +2181,11 @@ const List<SongData> kSongs = [
     artist: 'Bob Marley',
     difficulty: 1,
     genre: 'Reggae / Ska',
-    chords: ['G', 'C', 'D', 'Em'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 108,
+    key: 'G',
+    strumPattern: '·U·U·U·U',
   ),
   SongData(
     id: 'redemption-song',
@@ -1695,9 +2193,11 @@ const List<SongData> kSongs = [
     artist: 'Bob Marley',
     difficulty: 1,
     genre: 'Reggae / Ska',
-    chords: ['G', 'C', 'Am', 'Em', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('Am', 4), SectionBar('Em', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 75,
+    key: 'G',
+    strumPattern: '·U·U·U·U',
   ),
   SongData(
     id: 'one-love',
@@ -1705,9 +2205,11 @@ const List<SongData> kSongs = [
     artist: 'Bob Marley',
     difficulty: 1,
     genre: 'Reggae / Ska',
-    chords: ['A', 'D', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'A',
+    strumPattern: '·U·U·U·U',
   ),
   SongData(
     id: 'is-this-love',
@@ -1715,9 +2217,12 @@ const List<SongData> kSongs = [
     artist: 'Bob Marley',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['G', 'C', 'Em', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('Em', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 90,
+    key: 'G',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'could-you-be-loved',
@@ -1725,9 +2230,12 @@ const List<SongData> kSongs = [
     artist: 'Bob Marley',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['D', 'Bm', 'G', 'A'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('Bm', 4), SectionBar('G', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    key: 'D',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'monkey-man',
@@ -1735,9 +2243,12 @@ const List<SongData> kSongs = [
     artist: 'Toots & the Maytals',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['D', 'G', 'A', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('G', 4), SectionBar('A', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 88,
+    key: 'D',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'pressure-drop',
@@ -1745,9 +2256,12 @@ const List<SongData> kSongs = [
     artist: 'Toots & the Maytals',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['G', 'C', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    key: 'G',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'the-tide-is-high',
@@ -1755,9 +2269,12 @@ const List<SongData> kSongs = [
     artist: 'Blondie',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['A', 'D', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 92,
+    key: 'A',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'ghost-town',
@@ -1765,9 +2282,12 @@ const List<SongData> kSongs = [
     artist: 'The Specials',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['Dm', 'Am', 'Bb', 'A'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Dm', 4), SectionBar('Am', 4), SectionBar('Bb', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 110,
+    key: 'Dm',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'a-message-to-you-rudy',
@@ -1775,9 +2295,12 @@ const List<SongData> kSongs = [
     artist: 'The Specials',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['F', 'Bb', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('F', 4), SectionBar('Bb', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 132,
+    key: 'F',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'gangsters',
@@ -1785,9 +2308,12 @@ const List<SongData> kSongs = [
     artist: 'The Specials',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['Am', 'F', 'G', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('E7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 118,
+    key: 'Am',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'one-step-beyond',
@@ -1795,9 +2321,12 @@ const List<SongData> kSongs = [
     artist: 'Madness',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['A', 'D', 'G', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('G', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 140,
+    key: 'A',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'our-house',
@@ -1805,9 +2334,12 @@ const List<SongData> kSongs = [
     artist: 'Madness',
     difficulty: 2,
     genre: 'Reggae / Ska',
-    chords: ['G', 'C', 'D', 'Em'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('D', 4), SectionBar('Em', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 136,
+    key: 'G',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'many-rivers-to-cross',
@@ -1815,9 +2347,12 @@ const List<SongData> kSongs = [
     artist: 'Jimmy Cliff',
     difficulty: 3,
     genre: 'Reggae / Ska',
-    chords: ['C', 'Am', 'G', 'F', 'Dm', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('Am', 4), SectionBar('G', 4), SectionBar('F', 4), SectionBar('Dm', 4), SectionBar('E7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 74,
+    key: 'C',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'rivers-of-babylon',
@@ -1825,9 +2360,12 @@ const List<SongData> kSongs = [
     artist: 'The Melodians',
     difficulty: 3,
     genre: 'Reggae / Ska',
-    chords: ['D', 'G', 'A7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('G', 4), SectionBar('A7', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 88,
+    key: 'D',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'concrete-jungle',
@@ -1835,9 +2373,12 @@ const List<SongData> kSongs = [
     artist: 'Bob Marley',
     difficulty: 3,
     genre: 'Reggae / Ska',
-    chords: ['Am', 'G', 'F', 'E', 'Dm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('G', 4), SectionBar('F', 4), SectionBar('E', 4), SectionBar('Dm', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 92,
+    key: 'Am',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'the-harder-they-come',
@@ -1845,11 +2386,13 @@ const List<SongData> kSongs = [
     artist: 'Jimmy Cliff',
     difficulty: 3,
     genre: 'Reggae / Ska',
-    chords: ['C', 'F', 'G', 'Am'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('F', 4), SectionBar('G', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    key: 'C',
+    strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-09',
   ),
-
   // ── Country ───────────────────────────────────────────────────────────────
   SongData(
     id: 'jolene',
@@ -1857,9 +2400,11 @@ const List<SongData> kSongs = [
     artist: 'Dolly Parton',
     difficulty: 1,
     genre: 'Country',
-    chords: ['Am', 'C', 'G', 'Em'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Am', 4), SectionBar('C', 4), SectionBar('Am', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('Am', 4), SectionBar('Am', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 130,
+    key: 'Am',
+    strumPattern: 'D·DU·DU',
   ),
   SongData(
     id: 'ring-of-fire',
@@ -1867,9 +2412,11 @@ const List<SongData> kSongs = [
     artist: 'Johnny Cash',
     difficulty: 1,
     genre: 'Country',
-    chords: ['G', 'C', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 142,
+    key: 'G',
+    strumPattern: 'D·DU·DU',
   ),
   SongData(
     id: 'jackson',
@@ -1877,9 +2424,11 @@ const List<SongData> kSongs = [
     artist: 'Johnny Cash & June Carter',
     difficulty: 1,
     genre: 'Country',
-    chords: ['C', 'F', 'G7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('F', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F', 4), SectionBar('C', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 138,
+    key: 'C',
+    strumPattern: 'D·DU·DU',
   ),
   SongData(
     id: 'country-roads-denver',
@@ -1887,9 +2436,11 @@ const List<SongData> kSongs = [
     artist: 'John Denver',
     difficulty: 1,
     genre: 'Country',
-    chords: ['G', 'Em', 'D', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('Em', 4), SectionBar('G', 4), SectionBar('Em', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Em', 4), SectionBar('G', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 84,
+    key: 'G',
+    strumPattern: 'D·DU·DU',
   ),
   SongData(
     id: 'i-walk-the-line',
@@ -1897,9 +2448,11 @@ const List<SongData> kSongs = [
     artist: 'Johnny Cash',
     difficulty: 1,
     genre: 'Country',
-    chords: ['C', 'F', 'G7', 'D7', 'A7', 'E7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('F', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F', 4), SectionBar('C', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 112,
+    key: 'C',
+    strumPattern: 'D·DU·DU',
   ),
   SongData(
     id: 'wagon-wheel',
@@ -1907,9 +2460,11 @@ const List<SongData> kSongs = [
     artist: 'Old Crow Medicine Show / Darius Rucker',
     difficulty: 1,
     genre: 'Country',
-    chords: ['G', 'D', 'Em', 'C'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('G', 4), SectionBar('D', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('D', 4), SectionBar('G', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 100,
+    key: 'G',
+    strumPattern: 'D·DU·DU',
   ),
   SongData(
     id: 'friends-in-low-places',
@@ -1917,9 +2472,12 @@ const List<SongData> kSongs = [
     artist: 'Garth Brooks',
     difficulty: 2,
     genre: 'Country',
-    chords: ['G', 'A', 'D', 'Em', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('A', 4), SectionBar('G', 4), SectionBar('A', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('G', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 96,
+    key: 'G',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'tennessee-whiskey',
@@ -1927,9 +2485,12 @@ const List<SongData> kSongs = [
     artist: 'Chris Stapleton',
     difficulty: 2,
     genre: 'Country',
-    chords: ['A', 'Bm', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('A', 4), SectionBar('Bm', 4), SectionBar('A', 4), SectionBar('Bm', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Bm', 4), SectionBar('A', 4), SectionBar('A', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 64,
+    key: 'A',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'need-you-now',
@@ -1937,9 +2498,12 @@ const List<SongData> kSongs = [
     artist: 'Lady Antebellum',
     difficulty: 2,
     genre: 'Country',
-    chords: ['D', 'A', 'Bm', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('A', 4), SectionBar('D', 4), SectionBar('A', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('D', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 76,
+    key: 'D',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'achy-breaky-heart',
@@ -1947,9 +2511,12 @@ const List<SongData> kSongs = [
     artist: 'Billy Ray Cyrus',
     difficulty: 2,
     genre: 'Country',
-    chords: ['D', 'A'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('A', 4), SectionBar('D', 4), SectionBar('A', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('A', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 140,
+    key: 'D',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'boots',
@@ -1957,9 +2524,12 @@ const List<SongData> kSongs = [
     artist: 'Nancy Sinatra',
     difficulty: 2,
     genre: 'Country',
-    chords: ['C', 'F', 'G'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('C', 4), SectionBar('F', 4), SectionBar('C', 4), SectionBar('F', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('F', 4), SectionBar('C', 4), SectionBar('C', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 108,
+    key: 'C',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'the-gambler',
@@ -1967,9 +2537,12 @@ const List<SongData> kSongs = [
     artist: 'Kenny Rogers',
     difficulty: 2,
     genre: 'Country',
-    chords: ['D', 'G', 'A', 'Bm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('G', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 108,
+    key: 'D',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'mama-tried',
@@ -1977,9 +2550,12 @@ const List<SongData> kSongs = [
     artist: 'Merle Haggard',
     difficulty: 2,
     genre: 'Country',
-    chords: ['G', 'C', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 132,
+    key: 'G',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'on-the-road-again',
@@ -1987,9 +2563,12 @@ const List<SongData> kSongs = [
     artist: 'Willie Nelson',
     difficulty: 2,
     genre: 'Country',
-    chords: ['E', 'A', 'F#m', 'B7'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('E', 4), SectionBar('A', 4), SectionBar('E', 4), SectionBar('A', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('A', 4), SectionBar('E', 4), SectionBar('E', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 104,
+    key: 'E',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'whiskey-in-the-jar',
@@ -1997,9 +2576,12 @@ const List<SongData> kSongs = [
     artist: 'Thin Lizzy',
     difficulty: 2,
     genre: 'Country',
-    chords: ['G', 'Em', 'C', 'D'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('Em', 4), SectionBar('G', 4), SectionBar('Em', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('Em', 4), SectionBar('G', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 104,
+    key: 'G',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'copperhead-road',
@@ -2007,9 +2589,12 @@ const List<SongData> kSongs = [
     artist: 'Steve Earle',
     difficulty: 3,
     genre: 'Country',
-    chords: ['D5', 'G5', 'A5'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D5', 4), SectionBar('G5', 4), SectionBar('D5', 4), SectionBar('G5', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G5', 4), SectionBar('D5', 4), SectionBar('D5', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 144,
+    key: 'D5',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'fast-as-you',
@@ -2017,9 +2602,12 @@ const List<SongData> kSongs = [
     artist: 'Dwight Yoakam',
     difficulty: 3,
     genre: 'Country',
-    chords: ['D', 'G', 'A', 'E'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('G', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 160,
+    key: 'D',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'the-devil-went-down-to-georgia',
@@ -2027,9 +2615,12 @@ const List<SongData> kSongs = [
     artist: 'Charlie Daniels Band',
     difficulty: 3,
     genre: 'Country',
-    chords: ['Dm', 'C', 'G', 'A'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('Dm', 4), SectionBar('C', 4), SectionBar('Dm', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('Dm', 4), SectionBar('Dm', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 220,
+    key: 'Dm',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'pancho-and-lefty',
@@ -2037,9 +2628,12 @@ const List<SongData> kSongs = [
     artist: 'Townes Van Zandt',
     difficulty: 3,
     genre: 'Country',
-    chords: ['G', 'C', 'D', 'Em', 'Am'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('G', 4), SectionBar('C', 4), SectionBar('G', 4), SectionBar('C', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('C', 4), SectionBar('G', 4), SectionBar('G', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 88,
+    key: 'G',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'brand-new-key',
@@ -2047,18 +2641,50 @@ const List<SongData> kSongs = [
     artist: 'Melanie',
     difficulty: 3,
     genre: 'Country',
-    chords: ['D', 'G', 'A7', 'Bm'],
+    sections: [SongSection(label: 'Verse', bars: [SectionBar('D', 4), SectionBar('G', 4), SectionBar('D', 4), SectionBar('G', 4)], repeats: 1), SongSection(label: 'Chorus', bars: [SectionBar('G', 4), SectionBar('D', 4), SectionBar('D', 4)], repeats: 1)],
     lessonRef: 'module_1/lesson_1',
     bpm: 148,
+    key: 'D',
+    strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
 ];
 
-class SongLibraryScreen extends ConsumerStatefulWidget {
-  /// When [isTab] is true the widget is embedded as a shell tab and therefore
-  /// shows no back-button in the AppBar.  When false (default) it is pushed as
-  /// a standalone route and a back button is rendered automatically.
-  final bool isTab;
+// ── Song Unlock ───────────────────────────────────────────────────────────────
 
+final songUnlockProvider = StateNotifierProvider<SongUnlockNotifier, bool>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return SongUnlockNotifier(prefs);
+});
+
+class SongUnlockNotifier extends StateNotifier<bool> {
+  final SharedPreferences _prefs;
+  SongUnlockNotifier(this._prefs) : super(_prefs.getBool('songs_unlocked') ?? false);
+
+  Future<bool> tryUnlock(String code) async {
+    if (code.toLowerCase().trim() == 'open') {
+      state = true;
+      await _prefs.setBool('songs_unlocked', true);
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> lock() async {
+    state = false;
+    await _prefs.setBool('songs_unlocked', false);
+  }
+}
+
+bool _isSongAvailable(SongData song, int completedModules, bool globalUnlocked) {
+  if (globalUnlocked) return true;
+  if (song.requiredModuleId == null) return true;
+  final num = int.tryParse(song.requiredModuleId!.replaceAll('module-', '')) ?? 0;
+  return completedModules >= num;
+}
+
+class SongLibraryScreen extends ConsumerStatefulWidget {
+  final bool isTab;
   const SongLibraryScreen({super.key, this.isTab = false});
 
   @override
@@ -2066,16 +2692,14 @@ class SongLibraryScreen extends ConsumerStatefulWidget {
 }
 
 class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
-  String? _activeGenre; // null = 'Alle'
+  String? _activeGenre;
   final Set<int> _diffFilter = {};
 
-  /// All unique genres, sorted alphabetically.
   static final List<String> _sortedGenres = () {
     final genres = kSongs.map((s) => s.genre).toSet().toList()..sort();
     return genres;
   }();
 
-  /// Count of songs per genre.
   static final Map<String, int> _genreCount = () {
     final map = <String, int>{};
     for (final s in kSongs) {
@@ -2094,17 +2718,106 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
     return list;
   }
 
+  void _showUnlockDialog(BuildContext context, bool isUnlocked) {
+    if (isUnlocked) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Songs verwalten'),
+          content: const Text('Alle Songs sind derzeit freigeschaltet. Wieder sperren?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Abbrechen')),
+            TextButton(
+              onPressed: () {
+                ref.read(songUnlockProvider.notifier).lock();
+                Navigator.pop(ctx);
+              },
+              child: const Text('Sperren'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    _showCodeDialog(context);
+  }
+
+  void _showCodeDialog(BuildContext context) {
+    final controller = TextEditingController();
+    String? errorText;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Songs freischalten'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: 'Code eingeben',
+                  errorText: errorText,
+                  border: const OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _tryCode(ctx, controller, setState, (e) => setState(() => errorText = e)),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Abbrechen')),
+            ElevatedButton(
+              onPressed: () => _tryCode(ctx, controller, setState, (e) => setState(() => errorText = e)),
+              child: const Text('Freischalten'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _tryCode(
+    BuildContext ctx,
+    TextEditingController controller,
+    StateSetter setState,
+    void Function(String?) setError,
+  ) async {
+    final success = await ref.read(songUnlockProvider.notifier).tryUnlock(controller.text);
+    if (success) {
+      if (ctx.mounted) Navigator.pop(ctx);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Alle Songs freigeschaltet! 🎸')),
+        );
+      }
+    } else {
+      setError('Ungültiger Code');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final songs = _filtered;
+    final globalUnlocked = ref.watch(songUnlockProvider);
+    final profile = ref.watch(currentUserProfileProvider).value;
+    final completedModules = profile?.totalModulesCompleted ?? 0;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Songbuch'),
         automaticallyImplyLeading: !widget.isTab,
+        actions: [
+          IconButton(
+            icon: Icon(
+              globalUnlocked ? Icons.lock_open : Icons.lock_outline,
+              color: globalUnlocked ? Colors.green : null,
+            ),
+            onPressed: () => _showUnlockDialog(context, globalUnlocked),
+            tooltip: globalUnlocked ? 'Songs gesperrt' : 'Code eingeben',
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // ── Mic-feedback banner ──────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
             child: Row(
@@ -2125,14 +2838,12 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          // ── Genre filter ─────────────────────────────────────────────────
           SizedBox(
             height: 44,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
-                // 'Alle' chip first
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
@@ -2154,7 +2865,6 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
               ],
             ),
           ),
-          // ── Difficulty filter ────────────────────────────────────────────
           SizedBox(
             height: 44,
             child: ListView(
@@ -2187,7 +2897,6 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          // ── Song list ────────────────────────────────────────────────────
           Expanded(
             child: songs.isEmpty
                 ? const Center(child: Text('Keine Songs gefunden'))
@@ -2196,105 +2905,161 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
                     itemCount: songs.length,
                     itemBuilder: (context, i) {
                       final s = songs[i];
-                      return Card(
-                        color: AppColors.cardDark,
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: AppColors.primary,
-                            child: Text(
-                              s.title.substring(0, 1),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            s.title,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                s.artist,
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  // Difficulty stars
-                                  ...List.generate(
-                                    s.difficulty,
-                                    (_) => const Icon(Icons.star,
-                                        size: 12,
-                                        color: AppColors.xpColor),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // Genre label
-                                  Text(
-                                    s.genre,
-                                    style: const TextStyle(
-                                      color: AppColors.textTertiary,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  // BPM
-                                  Text(
-                                    '♩ ${s.bpm} BPM',
-                                    style: const TextStyle(
-                                      color: AppColors.textTertiary,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                  if (s.tuning != 'Standard') ...[
-                                    const SizedBox(width: 6),
-                                    // Tuning badge
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 5, vertical: 1),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary
-                                            .withValues(alpha: 0.25),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        s.tuning,
-                                        style: const TextStyle(
-                                          color: AppColors.primary,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
+                      final available = _isSongAvailable(s, completedModules, globalUnlocked);
+                      return _SongCard(song: s, isTab: widget.isTab, isLocked: !available, onTapLocked: () {
+                        final moduleNum = s.requiredModuleId?.replaceAll('module-', '') ?? '?';
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Song gesperrt'),
+                            content: Text('Dieser Song wird freigeschaltet, wenn du Modul $moduleNum abschließt.'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  _showCodeDialog(context);
+                                },
+                                child: const Text('Code eingeben'),
                               ),
                             ],
                           ),
-                          trailing: const Icon(
-                            Icons.chevron_right,
-                            color: AppColors.textSecondary,
-                          ),
-                          onTap: () {
-                            final base = widget.isTab
-                                ? '/home/songbuch'
-                                : '/home/songs';
-                            context.go('$base/${s.id}');
-                          },
-                        ),
-                      );
+                        );
+                      });
                     },
                   ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SongCard extends StatelessWidget {
+  final SongData song;
+  final bool isTab;
+  final bool isLocked;
+  final VoidCallback? onTapLocked;
+  const _SongCard({
+    required this.song,
+    required this.isTab,
+    this.isLocked = false,
+    this.onTapLocked,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<SharedPreferences>(
+      future: SharedPreferences.getInstance(),
+      builder: (context, snap) {
+        int stars = 0;
+        if (snap.hasData) {
+          final acc = snap.data!.getDouble('song_accuracy_${song.id}') ?? 0.0;
+          if (acc >= 90) stars = 3;
+          else if (acc >= 75) stars = 2;
+          else if (acc >= 50) stars = 1;
+        }
+        final tile = Card(
+          color: AppColors.cardDark,
+          child: Stack(
+            children: [
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.primary,
+                  child: Text(
+                    song.title.substring(0, 1),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  song.title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      song.artist,
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        ...List.generate(
+                          song.difficulty,
+                          (_) => const Icon(Icons.star, size: 12, color: AppColors.xpColor),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          song.genre,
+                          style: const TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '♩ ${song.bpm} BPM',
+                          style: const TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 11,
+                          ),
+                        ),
+                        if (song.tuning != 'Standard') ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              song.tuning,
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: List.generate(3, (i) => Icon(
+                            i < stars ? Icons.star : Icons.star_border,
+                            size: 12,
+                            color: AppColors.xpColor,
+                          )),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                trailing: isLocked
+                    ? const Icon(Icons.lock, color: AppColors.textSecondary)
+                    : const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                onTap: isLocked
+                    ? onTapLocked
+                    : () {
+                        final base = isTab ? '/home/songbuch' : '/home/songs';
+                        context.go('$base/${song.id}');
+                      },
+              ),
+            ],
+          ),
+        );
+        if (isLocked) {
+          return Opacity(opacity: 0.5, child: tile);
+        }
+        return tile;
+      },
     );
   }
 }
