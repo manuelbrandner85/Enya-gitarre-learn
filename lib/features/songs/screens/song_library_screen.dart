@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
+import 'package:enya_gitarre_learn/core/providers/app_providers.dart';
 
 class SectionBar {
   final String chord;
@@ -31,6 +32,7 @@ class SongData {
   final int capo;
   final String key;
   final String strumPattern;
+  final String? requiredModuleId; // null = immer frei
 
   const SongData({
     required this.id,
@@ -45,6 +47,7 @@ class SongData {
     this.capo = 0,
     this.key = '',
     this.strumPattern = 'D·D·D·D',
+    this.requiredModuleId,
   });
 
   List<String> get chords {
@@ -117,6 +120,7 @@ const List<SongData> kSongs = [
     bpm: 136,
     key: 'G',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'creep',
@@ -129,6 +133,7 @@ const List<SongData> kSongs = [
     bpm: 92,
     key: 'G',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'whole-lotta-love',
@@ -141,6 +146,7 @@ const List<SongData> kSongs = [
     bpm: 90,
     key: 'Em',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'come-as-you-are',
@@ -153,6 +159,7 @@ const List<SongData> kSongs = [
     bpm: 120,
     key: 'Em',
     strumPattern: 'D·D·D·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'back-in-black',
@@ -165,6 +172,7 @@ const List<SongData> kSongs = [
     bpm: 94,
     key: 'Em',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'all-right-now',
@@ -177,6 +185,7 @@ const List<SongData> kSongs = [
     bpm: 124,
     key: 'A',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'born-to-be-wild',
@@ -189,6 +198,7 @@ const List<SongData> kSongs = [
     bpm: 144,
     key: 'Em',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'smells-like-teen-spirit',
@@ -201,6 +211,7 @@ const List<SongData> kSongs = [
     bpm: 116,
     key: 'F',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'highway-to-hell',
@@ -213,6 +224,7 @@ const List<SongData> kSongs = [
     bpm: 116,
     key: 'A',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'brown-sugar',
@@ -225,6 +237,7 @@ const List<SongData> kSongs = [
     bpm: 152,
     key: 'G',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'sympathy-for-the-devil',
@@ -237,6 +250,7 @@ const List<SongData> kSongs = [
     bpm: 128,
     key: 'E',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'layla',
@@ -249,6 +263,7 @@ const List<SongData> kSongs = [
     bpm: 116,
     key: 'Dm',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'sunshine-of-your-love',
@@ -261,6 +276,7 @@ const List<SongData> kSongs = [
     bpm: 112,
     key: 'D',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'paint-it-black',
@@ -273,6 +289,7 @@ const List<SongData> kSongs = [
     bpm: 160,
     key: 'Em',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'black-dog',
@@ -285,6 +302,7 @@ const List<SongData> kSongs = [
     bpm: 166,
     key: 'A',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'stairway-to-heaven',
@@ -297,6 +315,7 @@ const List<SongData> kSongs = [
     bpm: 82,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   // ── Pop ───────────────────────────────────────────────────────────────────
   SongData(
@@ -382,6 +401,7 @@ const List<SongData> kSongs = [
     bpm: 136,
     key: 'C',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'dont-look-back-in-anger',
@@ -394,6 +414,7 @@ const List<SongData> kSongs = [
     bpm: 68,
     key: 'C',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'wonderwall',
@@ -407,6 +428,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'G',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'yellow',
@@ -419,6 +441,7 @@ const List<SongData> kSongs = [
     bpm: 87,
     key: 'B',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'lucky',
@@ -431,6 +454,7 @@ const List<SongData> kSongs = [
     bpm: 136,
     key: 'G',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'angels',
@@ -443,6 +467,7 @@ const List<SongData> kSongs = [
     bpm: 76,
     key: 'D',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'cant-help-falling-in-love',
@@ -455,6 +480,7 @@ const List<SongData> kSongs = [
     bpm: 68,
     key: 'C',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'fix-you',
@@ -467,6 +493,7 @@ const List<SongData> kSongs = [
     bpm: 69,
     key: 'C',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'take-me-to-church',
@@ -479,6 +506,7 @@ const List<SongData> kSongs = [
     bpm: 130,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hotel-california',
@@ -492,6 +520,7 @@ const List<SongData> kSongs = [
     capo: 7,
     key: 'Bm',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'africa',
@@ -504,6 +533,7 @@ const List<SongData> kSongs = [
     bpm: 92,
     key: 'F#m',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'fast-car',
@@ -516,6 +546,7 @@ const List<SongData> kSongs = [
     bpm: 102,
     key: 'C',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'more-than-words',
@@ -528,6 +559,7 @@ const List<SongData> kSongs = [
     bpm: 96,
     key: 'G',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'tears-in-heaven',
@@ -540,6 +572,7 @@ const List<SongData> kSongs = [
     bpm: 80,
     key: 'A',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   // ── Blues ─────────────────────────────────────────────────────────────────
   SongData(
@@ -589,6 +622,7 @@ const List<SongData> kSongs = [
     bpm: 188,
     key: 'E7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'crossroad-blues',
@@ -601,6 +635,7 @@ const List<SongData> kSongs = [
     bpm: 84,
     key: 'A7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hoodoo-man-blues',
@@ -613,6 +648,7 @@ const List<SongData> kSongs = [
     bpm: 80,
     key: 'E7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'stormy-monday',
@@ -625,6 +661,7 @@ const List<SongData> kSongs = [
     bpm: 62,
     key: 'G7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'key-to-the-highway',
@@ -637,6 +674,7 @@ const List<SongData> kSongs = [
     bpm: 116,
     key: 'A',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'mannish-boy',
@@ -649,6 +687,7 @@ const List<SongData> kSongs = [
     bpm: 100,
     key: 'E7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'texas-flood',
@@ -661,6 +700,7 @@ const List<SongData> kSongs = [
     bpm: 58,
     key: 'G7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'born-under-a-bad-sign',
@@ -673,6 +713,7 @@ const List<SongData> kSongs = [
     bpm: 80,
     key: 'C#7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hoochie-coochie-man',
@@ -685,6 +726,7 @@ const List<SongData> kSongs = [
     bpm: 92,
     key: 'A7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'still-got-the-blues',
@@ -697,6 +739,7 @@ const List<SongData> kSongs = [
     bpm: 68,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'little-wing',
@@ -709,6 +752,7 @@ const List<SongData> kSongs = [
     bpm: 68,
     key: 'Em',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'since-i-ve-been-loving-you',
@@ -721,6 +765,7 @@ const List<SongData> kSongs = [
     bpm: 60,
     key: 'Cm',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'whipping-post',
@@ -733,6 +778,7 @@ const List<SongData> kSongs = [
     bpm: 82,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'comfortably-numb',
@@ -745,6 +791,7 @@ const List<SongData> kSongs = [
     bpm: 62,
     key: 'Bm',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'love-struck-baby',
@@ -757,6 +804,7 @@ const List<SongData> kSongs = [
     bpm: 200,
     key: 'E7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'all-your-love',
@@ -769,6 +817,7 @@ const List<SongData> kSongs = [
     bpm: 132,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'smoking-gun',
@@ -781,6 +830,7 @@ const List<SongData> kSongs = [
     bpm: 100,
     key: 'Cm7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   // ── Metal ─────────────────────────────────────────────────────────────────
   SongData(
@@ -830,6 +880,7 @@ const List<SongData> kSongs = [
     bpm: 170,
     key: 'G5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'ace-of-spades',
@@ -842,6 +893,7 @@ const List<SongData> kSongs = [
     bpm: 220,
     key: 'Am',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'enter-sandman',
@@ -854,6 +906,7 @@ const List<SongData> kSongs = [
     bpm: 122,
     key: 'E5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'master-of-puppets',
@@ -866,6 +919,7 @@ const List<SongData> kSongs = [
     bpm: 212,
     key: 'Em',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'for-whom-the-bell-tolls',
@@ -878,6 +932,7 @@ const List<SongData> kSongs = [
     bpm: 112,
     key: 'F5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'war-pigs',
@@ -890,6 +945,7 @@ const List<SongData> kSongs = [
     bpm: 72,
     key: 'D5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'holy-diver',
@@ -902,6 +958,7 @@ const List<SongData> kSongs = [
     bpm: 88,
     key: 'Dm',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'crazy-train',
@@ -914,6 +971,7 @@ const List<SongData> kSongs = [
     bpm: 138,
     key: 'A5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'you-ve-got-another-thing-coming',
@@ -926,6 +984,7 @@ const List<SongData> kSongs = [
     bpm: 152,
     key: 'E5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'fade-to-black',
@@ -938,6 +997,7 @@ const List<SongData> kSongs = [
     bpm: 112,
     key: 'Am',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'eruption',
@@ -950,6 +1010,7 @@ const List<SongData> kSongs = [
     bpm: 136,
     key: 'D5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'raining-blood',
@@ -963,6 +1024,7 @@ const List<SongData> kSongs = [
     tuning: 'Drop D',
     key: 'Em',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'battery',
@@ -975,6 +1037,7 @@ const List<SongData> kSongs = [
     bpm: 200,
     key: 'C5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'nothing-else-matters',
@@ -987,6 +1050,7 @@ const List<SongData> kSongs = [
     bpm: 69,
     key: 'Em',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'through-the-fire-and-flames',
@@ -999,6 +1063,7 @@ const List<SongData> kSongs = [
     bpm: 200,
     key: 'E5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'zero-signal',
@@ -1012,6 +1077,7 @@ const List<SongData> kSongs = [
     tuning: 'Drop D',
     key: 'D5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'cemetary-gates',
@@ -1024,6 +1090,7 @@ const List<SongData> kSongs = [
     bpm: 76,
     key: 'Em',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   // ── Folk / Acoustic ───────────────────────────────────────────────────────
   SongData(
@@ -1116,6 +1183,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'scarborough-fair',
@@ -1129,6 +1197,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'the-boxer',
@@ -1142,6 +1211,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'C',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'norwegianwood',
@@ -1155,6 +1225,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'D',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'blackbird',
@@ -1168,6 +1239,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'G',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'fire-and-rain',
@@ -1181,6 +1253,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'A',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'the-house-of-the-rising-sun',
@@ -1194,6 +1267,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hallelujah',
@@ -1207,6 +1281,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'C',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'wish-you-were-here',
@@ -1220,6 +1295,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'Em7',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'big-yellow-taxi',
@@ -1233,6 +1309,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'A',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'both-sides-now',
@@ -1246,6 +1323,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'G',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'tangerine',
@@ -1260,6 +1338,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'G',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'bron-y-aur-stomp',
@@ -1273,6 +1352,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'C',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'the-needle-and-the-damage-done',
@@ -1286,6 +1366,7 @@ const List<SongData> kSongs = [
     capo: 2,
     key: 'D',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   // ── Klassik ───────────────────────────────────────────────────────────────
   SongData(
@@ -1347,6 +1428,7 @@ const List<SongData> kSongs = [
     bpm: 66,
     key: 'D',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'fur-elise',
@@ -1359,6 +1441,7 @@ const List<SongData> kSongs = [
     bpm: 92,
     key: 'Am',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'jesu-joy-of-mans-desiring',
@@ -1371,6 +1454,7 @@ const List<SongData> kSongs = [
     bpm: 78,
     key: 'G',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'bourree-e-minor',
@@ -1383,6 +1467,7 @@ const List<SongData> kSongs = [
     bpm: 120,
     key: 'Em',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'lagrima',
@@ -1395,6 +1480,7 @@ const List<SongData> kSongs = [
     bpm: 60,
     key: 'E',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'adelita',
@@ -1407,6 +1493,7 @@ const List<SongData> kSongs = [
     bpm: 100,
     key: 'D',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'asturias',
@@ -1419,6 +1506,7 @@ const List<SongData> kSongs = [
     bpm: 116,
     key: 'Am',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'recuerdos-de-la-alhambra',
@@ -1431,6 +1519,7 @@ const List<SongData> kSongs = [
     bpm: 80,
     key: 'Am',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'capricho-arabe',
@@ -1443,6 +1532,7 @@ const List<SongData> kSongs = [
     bpm: 76,
     key: 'Dm',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'variations-on-a-theme-by-handel',
@@ -1455,6 +1545,7 @@ const List<SongData> kSongs = [
     bpm: 88,
     key: 'A',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'andantino',
@@ -1467,6 +1558,7 @@ const List<SongData> kSongs = [
     bpm: 84,
     key: 'C',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'prelude-in-d-minor',
@@ -1479,6 +1571,7 @@ const List<SongData> kSongs = [
     bpm: 60,
     key: 'Dm',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'malaguena',
@@ -1491,6 +1584,7 @@ const List<SongData> kSongs = [
     bpm: 140,
     key: 'Am',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'etude-op-35-no-22',
@@ -1503,6 +1597,7 @@ const List<SongData> kSongs = [
     bpm: 96,
     key: 'G',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'allegro-moderato',
@@ -1515,6 +1610,7 @@ const List<SongData> kSongs = [
     bpm: 100,
     key: 'C',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'estudio-in-e-major',
@@ -1527,6 +1623,7 @@ const List<SongData> kSongs = [
     bpm: 92,
     key: 'E',
     strumPattern: 'D···D···',
+    requiredModuleId: 'module-09',
   ),
   // ── Deutsch ───────────────────────────────────────────────────────────────
   SongData(
@@ -1588,6 +1685,7 @@ const List<SongData> kSongs = [
     bpm: 124,
     key: 'E5',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'still-loving-you',
@@ -1600,6 +1698,7 @@ const List<SongData> kSongs = [
     bpm: 66,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'stadtaffe',
@@ -1612,6 +1711,7 @@ const List<SongData> kSongs = [
     bpm: 100,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'schwarz-zu-blau',
@@ -1624,6 +1724,7 @@ const List<SongData> kSongs = [
     bpm: 92,
     key: 'Dm',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'ein-kompliment',
@@ -1636,6 +1737,7 @@ const List<SongData> kSongs = [
     bpm: 112,
     key: 'D',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'hier-kommt-alex',
@@ -1648,6 +1750,7 @@ const List<SongData> kSongs = [
     bpm: 148,
     key: 'A',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'azzurro',
@@ -1660,6 +1763,7 @@ const List<SongData> kSongs = [
     bpm: 96,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'perfekte-welle',
@@ -1672,6 +1776,7 @@ const List<SongData> kSongs = [
     bpm: 138,
     key: 'D',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'nummer-eins',
@@ -1684,6 +1789,7 @@ const List<SongData> kSongs = [
     bpm: 120,
     key: 'G',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'radio-gaga',
@@ -1696,6 +1802,7 @@ const List<SongData> kSongs = [
     bpm: 176,
     key: 'D',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'durch-den-monsun',
@@ -1708,6 +1815,7 @@ const List<SongData> kSongs = [
     bpm: 140,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'du-riechst-so-gut',
@@ -1720,6 +1828,7 @@ const List<SongData> kSongs = [
     bpm: 124,
     key: 'E5',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'feuer-frei',
@@ -1732,6 +1841,7 @@ const List<SongData> kSongs = [
     bpm: 138,
     key: 'D5',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'kein-zurueck',
@@ -1744,6 +1854,7 @@ const List<SongData> kSongs = [
     bpm: 128,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'ich-und-ich-stark',
@@ -1756,6 +1867,7 @@ const List<SongData> kSongs = [
     bpm: 130,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'engel',
@@ -1768,6 +1880,7 @@ const List<SongData> kSongs = [
     bpm: 104,
     key: 'Am',
     strumPattern: 'D·DU·UDU',
+    requiredModuleId: 'module-09',
   ),
   // ── Punk ──────────────────────────────────────────────────────────────────
   SongData(
@@ -1841,6 +1954,7 @@ const List<SongData> kSongs = [
     bpm: 152,
     key: 'Em',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'rockaway-beach',
@@ -1853,6 +1967,7 @@ const List<SongData> kSongs = [
     bpm: 176,
     key: 'D',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'blitzkrieg-bop',
@@ -1865,6 +1980,7 @@ const List<SongData> kSongs = [
     bpm: 190,
     key: 'A',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'i-wanna-be-sedated',
@@ -1877,6 +1993,7 @@ const List<SongData> kSongs = [
     bpm: 190,
     key: 'A',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'brain-stew',
@@ -1889,6 +2006,7 @@ const List<SongData> kSongs = [
     bpm: 76,
     key: 'A5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'all-the-small-things',
@@ -1901,6 +2019,7 @@ const List<SongData> kSongs = [
     bpm: 148,
     key: 'C',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'what-i-got',
@@ -1913,6 +2032,7 @@ const List<SongData> kSongs = [
     bpm: 92,
     key: 'D',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'pretty-fly-for-a-white-guy',
@@ -1925,6 +2045,7 @@ const List<SongData> kSongs = [
     bpm: 190,
     key: 'Bb',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'self-esteem',
@@ -1937,6 +2058,7 @@ const List<SongData> kSongs = [
     bpm: 104,
     key: 'Bb',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'holiday-green-day',
@@ -1949,6 +2071,7 @@ const List<SongData> kSongs = [
     bpm: 148,
     key: 'Fm',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'bad-reputation',
@@ -1961,6 +2084,7 @@ const List<SongData> kSongs = [
     bpm: 162,
     key: 'G',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'ever-fallen-in-love',
@@ -1973,6 +2097,7 @@ const List<SongData> kSongs = [
     bpm: 136,
     key: 'E',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'common-people',
@@ -1985,6 +2110,7 @@ const List<SongData> kSongs = [
     bpm: 130,
     key: 'G',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'sex-and-violence',
@@ -1997,6 +2123,7 @@ const List<SongData> kSongs = [
     bpm: 200,
     key: 'E5',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'in-the-city',
@@ -2009,6 +2136,7 @@ const List<SongData> kSongs = [
     bpm: 172,
     key: 'A',
     strumPattern: 'D·D·D·D·',
+    requiredModuleId: 'module-09',
   ),
   // ── Reggae / Ska ──────────────────────────────────────────────────────────
   SongData(
@@ -2094,6 +2222,7 @@ const List<SongData> kSongs = [
     bpm: 90,
     key: 'G',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'could-you-be-loved',
@@ -2106,6 +2235,7 @@ const List<SongData> kSongs = [
     bpm: 96,
     key: 'D',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'monkey-man',
@@ -2118,6 +2248,7 @@ const List<SongData> kSongs = [
     bpm: 88,
     key: 'D',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'pressure-drop',
@@ -2130,6 +2261,7 @@ const List<SongData> kSongs = [
     bpm: 100,
     key: 'G',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'the-tide-is-high',
@@ -2142,6 +2274,7 @@ const List<SongData> kSongs = [
     bpm: 92,
     key: 'A',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'ghost-town',
@@ -2154,6 +2287,7 @@ const List<SongData> kSongs = [
     bpm: 110,
     key: 'Dm',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'a-message-to-you-rudy',
@@ -2166,6 +2300,7 @@ const List<SongData> kSongs = [
     bpm: 132,
     key: 'F',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'gangsters',
@@ -2178,6 +2313,7 @@ const List<SongData> kSongs = [
     bpm: 118,
     key: 'Am',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'one-step-beyond',
@@ -2190,6 +2326,7 @@ const List<SongData> kSongs = [
     bpm: 140,
     key: 'A',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'our-house',
@@ -2202,6 +2339,7 @@ const List<SongData> kSongs = [
     bpm: 136,
     key: 'G',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'many-rivers-to-cross',
@@ -2214,6 +2352,7 @@ const List<SongData> kSongs = [
     bpm: 74,
     key: 'C',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'rivers-of-babylon',
@@ -2226,6 +2365,7 @@ const List<SongData> kSongs = [
     bpm: 88,
     key: 'D',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'concrete-jungle',
@@ -2238,6 +2378,7 @@ const List<SongData> kSongs = [
     bpm: 92,
     key: 'Am',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'the-harder-they-come',
@@ -2250,6 +2391,7 @@ const List<SongData> kSongs = [
     bpm: 100,
     key: 'C',
     strumPattern: '·U·U·U·U',
+    requiredModuleId: 'module-09',
   ),
   // ── Country ───────────────────────────────────────────────────────────────
   SongData(
@@ -2335,6 +2477,7 @@ const List<SongData> kSongs = [
     bpm: 96,
     key: 'G',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'tennessee-whiskey',
@@ -2347,6 +2490,7 @@ const List<SongData> kSongs = [
     bpm: 64,
     key: 'A',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'need-you-now',
@@ -2359,6 +2503,7 @@ const List<SongData> kSongs = [
     bpm: 76,
     key: 'D',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'achy-breaky-heart',
@@ -2371,6 +2516,7 @@ const List<SongData> kSongs = [
     bpm: 140,
     key: 'D',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'boots',
@@ -2383,6 +2529,7 @@ const List<SongData> kSongs = [
     bpm: 108,
     key: 'C',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'the-gambler',
@@ -2395,6 +2542,7 @@ const List<SongData> kSongs = [
     bpm: 108,
     key: 'D',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'mama-tried',
@@ -2407,6 +2555,7 @@ const List<SongData> kSongs = [
     bpm: 132,
     key: 'G',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'on-the-road-again',
@@ -2419,6 +2568,7 @@ const List<SongData> kSongs = [
     bpm: 104,
     key: 'E',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'whiskey-in-the-jar',
@@ -2431,6 +2581,7 @@ const List<SongData> kSongs = [
     bpm: 104,
     key: 'G',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-05',
   ),
   SongData(
     id: 'copperhead-road',
@@ -2443,6 +2594,7 @@ const List<SongData> kSongs = [
     bpm: 144,
     key: 'D5',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'fast-as-you',
@@ -2455,6 +2607,7 @@ const List<SongData> kSongs = [
     bpm: 160,
     key: 'D',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'the-devil-went-down-to-georgia',
@@ -2467,6 +2620,7 @@ const List<SongData> kSongs = [
     bpm: 220,
     key: 'Dm',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'pancho-and-lefty',
@@ -2479,6 +2633,7 @@ const List<SongData> kSongs = [
     bpm: 88,
     key: 'G',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
   SongData(
     id: 'brand-new-key',
@@ -2491,8 +2646,42 @@ const List<SongData> kSongs = [
     bpm: 148,
     key: 'D',
     strumPattern: 'D·DU·DU',
+    requiredModuleId: 'module-09',
   ),
 ];
+
+// ── Song Unlock ───────────────────────────────────────────────────────────────
+
+final songUnlockProvider = StateNotifierProvider<SongUnlockNotifier, bool>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return SongUnlockNotifier(prefs);
+});
+
+class SongUnlockNotifier extends StateNotifier<bool> {
+  final SharedPreferences _prefs;
+  SongUnlockNotifier(this._prefs) : super(_prefs.getBool('songs_unlocked') ?? false);
+
+  Future<bool> tryUnlock(String code) async {
+    if (code.toLowerCase().trim() == 'open') {
+      state = true;
+      await _prefs.setBool('songs_unlocked', true);
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> lock() async {
+    state = false;
+    await _prefs.setBool('songs_unlocked', false);
+  }
+}
+
+bool _isSongAvailable(SongData song, int completedModules, bool globalUnlocked) {
+  if (globalUnlocked) return true;
+  if (song.requiredModuleId == null) return true;
+  final num = int.tryParse(song.requiredModuleId!.replaceAll('module-', '')) ?? 0;
+  return completedModules >= num;
+}
 
 class SongLibraryScreen extends ConsumerStatefulWidget {
   final bool isTab;
