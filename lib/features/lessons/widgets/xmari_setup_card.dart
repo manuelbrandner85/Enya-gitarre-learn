@@ -26,7 +26,9 @@ class XmariSetupCard extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 Container(
                   padding:
@@ -51,7 +53,6 @@ class XmariSetupCard extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -64,8 +65,7 @@ class XmariSetupCard extends ConsumerWidget {
                     style: const TextStyle(fontSize: 12),
                   ),
                 ),
-                if (setup.requiresHeadphones) ...[
-                  const SizedBox(width: 8),
+                if (setup.requiresHeadphones)
                   const Chip(
                     label: Text(
                       '🎧 Kopfhörer',
@@ -73,7 +73,6 @@ class XmariSetupCard extends ConsumerWidget {
                     ),
                     visualDensity: VisualDensity.compact,
                   ),
-                ],
               ],
             ),
             const SizedBox(height: 12),

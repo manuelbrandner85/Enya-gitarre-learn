@@ -468,39 +468,46 @@ class _SongPracticeScreenState extends ConsumerState<SongPracticeScreen>
           ),
           // Next chord (small)
           if (nextChord != null || nextChordName != null)
-            Column(
-              children: [
-                const Text(
-                  'Als nächstes:',
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
+            Flexible(
+              child: Column(
+                children: [
+                  const Text(
+                    'Als nächstes:',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                if (nextChord != null)
-                  ChordDiagramWidget(chord: nextChord, size: 80)
-                else
-                  SizedBox(
-                    height: 108,
-                    child: Center(
-                      child: Text(
-                        nextChordName ?? '',
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 24,
+                  if (nextChord != null)
+                    ChordDiagramWidget(chord: nextChord, size: 80)
+                  else
+                    SizedBox(
+                      height: 108,
+                      child: Center(
+                        child: Text(
+                          nextChordName ?? '',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 24,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ),
+                  Text(
+                    nextChordName ?? '',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-                Text(
-                  nextChordName ?? '',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
         ],
       ),
