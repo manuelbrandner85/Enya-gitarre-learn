@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 /// Provides finger silhouette paths and drawing helpers for finger indicators
@@ -102,7 +100,7 @@ class FingerIcons {
 
     // White outline
     final strokePaint = Paint()
-      ..color = Colors.white.withOpacity(0.85)
+      ..color = Colors.white.withValues(alpha: 0.85)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawPath(path, strokePaint);
@@ -221,7 +219,7 @@ class FingerLegendRow extends StatelessWidget {
               '$finger',
               style: TextStyle(
                 fontSize: 9,
-                color: color.withOpacity(0.7),
+                color: color.withValues(alpha: 0.7),
               ),
             ),
           ],
