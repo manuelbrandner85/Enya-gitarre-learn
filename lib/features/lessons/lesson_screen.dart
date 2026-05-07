@@ -16,6 +16,7 @@ import '../../core/curriculum/pedagogy/learning_rules.dart';
 import '../../core/models/lesson.dart';
 import '../../core/practice/practice_session_tracker.dart';
 import '../../core/providers/app_providers.dart';
+import '../../core/widgets/fretboard_widget.dart';
 import '../../core/widgets/hands_free_overlay.dart' as hf;
 import 'controllers/lesson_controller.dart';
 import 'widgets/hand_mode_selector.dart';
@@ -377,6 +378,47 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                       total: steps.length,
                       instruction: steps[_currentStep],
                     ),
+                  // Interaktives Griffbrett: zeigt die Ziel-Position der
+                  // aktuellen Übung. Erscheint nur wenn die Note auf dem
+                  // Griffbrett ableitbar ist.
+                  if (state.currentExercise?.targetNoteOrChord != null) ...[
+                    const SizedBox(height: 16),
+                    Builder(builder: (_) {
+                      final note = state.currentExercise!.targetNoteOrChord;
+                      final positions = FretboardWidget.positionsForNote(note);
+                      if (positions.isEmpty) return const SizedBox.shrink();
+                      return Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardDark,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.outline),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4, bottom: 6),
+                              child: Text(
+                                'Position: $note',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            FretboardWidget(
+                              highlightedPositions: positions,
+                              activePosition: positions.first,
+                              showFingerNumbers: true,
+                              showNoteNames: true,
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
                   const SizedBox(height: 24),
                   if ((isLastStep || steps.isEmpty) && !_isExerciseComplete) ...[
                     HandModeSelector(
