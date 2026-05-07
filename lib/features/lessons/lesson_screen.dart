@@ -8,12 +8,15 @@ import '../../app/theme/colors.dart';
 import '../../core/curriculum/curriculum.dart';
 import '../../core/music_theory/note.dart';
 import '../../core/curriculum/hand_isolation.dart';
+import 'dart:async';
+
+import '../../core/audio/hands_free_service.dart';
 import '../../core/curriculum/adaptive_engine.dart';
 import '../../core/curriculum/pedagogy/learning_rules.dart';
 import '../../core/models/lesson.dart';
 import '../../core/practice/practice_session_tracker.dart';
 import '../../core/providers/app_providers.dart';
-import '../../core/widgets/hands_free_overlay.dart';
+import '../../core/widgets/hands_free_overlay.dart' as hf;
 import 'controllers/lesson_controller.dart';
 import 'widgets/hand_mode_selector.dart';
 import 'widgets/real_time_feedback_widget.dart';
@@ -46,6 +49,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   AdaptiveAction? _lastAdaptiveAction;
   bool _adaptiveBannerDismissed = false;
 
+  // Hands-Free Subscription
+  StreamSubscription<HandsFreeCommand>? _handsFreeSub;
+
   late final LessonKey _lessonKey;
   late final Lesson? _lesson;
 
@@ -71,6 +77,48 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _xmariSetupShown = false);
     });
+
+    // Hands-Free: Befehle in Lesson-Aktionen mappen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final svc = ref.read(hf.handsFreeServiceProvider);
+      _handsFreeSub = svc.commandStream.listen(_onHandsFreeCommand);
+    });
+  }
+
+  void _onHandsFreeCommand(HandsFreeCommand cmd) {
+    if (!mounted) return;
+    final controller =
+        ref.read(lessonControllerProvider(_lessonKey).notifier);
+    switch (cmd) {
+      case HandsFreeCommand.next:
+        // Nächster Schritt der Anleitung oder Übung beenden
+        if (_currentStep < (_lesson?.instructions.length ?? 1) - 1) {
+          setState(() => _currentStep++);
+        } else if (!_isExerciseComplete) {
+          controller.submitManualAttempt();
+          controller.stopListening();
+        }
+        break;
+      case HandsFreeCommand.back:
+        if (_currentStep > 0) {
+          setState(() => _currentStep--);
+        }
+        break;
+      case HandsFreeCommand.repeat:
+        controller.stopListening();
+        setState(() => _isExerciseComplete = false);
+        break;
+      case HandsFreeCommand.stop:
+        controller.stopListening();
+        break;
+      case HandsFreeCommand.start:
+        controller.startListening();
+        break;
+      case HandsFreeCommand.skip:
+      case HandsFreeCommand.help:
+        // Nichts zu tun – wird vom übergeordneten Screen abgefangen.
+        break;
+    }
   }
 
   /// Bewertet die letzte Übungs-Genauigkeit und triggert ggf. Adaptive
@@ -157,6 +205,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
 
   @override
   void dispose() {
+    _handsFreeSub?.cancel();
     WakelockPlus.disable();
     // Best-effort end practice session.
     ref.read(practiceSessionTrackerProvider).end();
@@ -436,7 +485,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                 ),
               );
             }),
-          const HandsFreeOverlay(),
+          const hf.HandsFreeOverlay(),
         ],  // closes Stack children
       ),  // closes Stack
     );
