@@ -2,12 +2,17 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 
 import 'migration_v1_to_v2.dart';
+import 'migration_v2_to_v3.dart';
 
 typedef MigrationFn = Future<void> Function(Migrator, GeneratedDatabase);
 
 class MigrationRegistry {
+  /// Pro Ziel-Version (z. B. 2 = "Migration nach v2") die Migrations-Funktion.
+  /// Migrationen werden sequentiell ausgeführt – ein Sprung von v1 nach v3
+  /// ruft v2 und v3 hintereinander auf.
   static final Map<int, MigrationFn> _migrations = {
     2: migrateV1ToV2,
+    3: migrateV2ToV3,
   };
 
   static Future<void> runMigrations(

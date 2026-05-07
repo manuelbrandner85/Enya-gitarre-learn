@@ -8,11 +8,16 @@ import '../../app/theme/colors.dart';
 import '../../core/curriculum/curriculum.dart';
 import '../../core/music_theory/note.dart';
 import '../../core/curriculum/hand_isolation.dart';
+import 'dart:async';
+
+import '../../core/audio/hands_free_service.dart';
+import '../../core/curriculum/adaptive_engine.dart';
 import '../../core/curriculum/pedagogy/learning_rules.dart';
 import '../../core/models/lesson.dart';
 import '../../core/practice/practice_session_tracker.dart';
 import '../../core/providers/app_providers.dart';
-import '../../core/widgets/hands_free_overlay.dart';
+import '../../core/widgets/fretboard_widget.dart';
+import '../../core/widgets/hands_free_overlay.dart' as hf;
 import 'controllers/lesson_controller.dart';
 import 'widgets/hand_mode_selector.dart';
 import 'widgets/real_time_feedback_widget.dart';
@@ -40,6 +45,14 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   bool _xmariSetupShown = true; // true = already dismissed (won't show)
   PracticeHand _practiceHand = PracticeHand.both;
 
+  // Adaptive Difficulty State
+  int _consecutiveLowAttempts = 0;
+  AdaptiveAction? _lastAdaptiveAction;
+  bool _adaptiveBannerDismissed = false;
+
+  // Hands-Free Subscription
+  StreamSubscription<HandsFreeCommand>? _handsFreeSub;
+
   late final LessonKey _lessonKey;
   late final Lesson? _lesson;
 
@@ -61,16 +74,139 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           );
     });
 
-    final pedagogy = LearningRules.lessonPedagogy[widget.lessonId];
-    if (pedagogy?.xmariSetup != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _xmariSetupShown = false);
-      });
+    // Pädagogik-Info immer verfügbar (nutzt _getPedagogy mit Fallback-Kette).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _xmariSetupShown = false);
+    });
+
+    // Hands-Free: Befehle in Lesson-Aktionen mappen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final svc = ref.read(hf.handsFreeServiceProvider);
+      _handsFreeSub = svc.commandStream.listen(_onHandsFreeCommand);
+    });
+  }
+
+  void _onHandsFreeCommand(HandsFreeCommand cmd) {
+    if (!mounted) return;
+    final controller =
+        ref.read(lessonControllerProvider(_lessonKey).notifier);
+    switch (cmd) {
+      case HandsFreeCommand.next:
+        // Nächster Schritt der Anleitung oder Übung beenden
+        if (_currentStep < (_lesson?.instructions.length ?? 1) - 1) {
+          setState(() => _currentStep++);
+        } else if (!_isExerciseComplete) {
+          controller.submitManualAttempt();
+          controller.stopListening();
+        }
+        break;
+      case HandsFreeCommand.back:
+        if (_currentStep > 0) {
+          setState(() => _currentStep--);
+        }
+        break;
+      case HandsFreeCommand.repeat:
+        controller.stopListening();
+        setState(() => _isExerciseComplete = false);
+        break;
+      case HandsFreeCommand.stop:
+        controller.stopListening();
+        break;
+      case HandsFreeCommand.start:
+        controller.startListening();
+        break;
+      case HandsFreeCommand.skip:
+      case HandsFreeCommand.help:
+        // Nichts zu tun – wird vom übergeordneten Screen abgefangen.
+        break;
     }
+  }
+
+  /// Bewertet die letzte Übungs-Genauigkeit und triggert ggf. Adaptive
+  /// Difficulty Banner / Confirmation-Dialog.
+  void _runAdaptiveEvaluation(double accuracy) {
+    if (accuracy <= 0.50) {
+      _consecutiveLowAttempts += 1;
+    } else if (accuracy >= 0.70) {
+      _consecutiveLowAttempts = 0;
+    }
+    final action =
+        AdaptiveEngine.evaluate(accuracy, _consecutiveLowAttempts);
+    setState(() {
+      _lastAdaptiveAction = action;
+      _adaptiveBannerDismissed = false;
+    });
+
+    // Bei reviewPrevious: separater Dialog mit Vorschlag.
+    if (action == AdaptiveAction.reviewPrevious && mounted) {
+      Future.microtask(() => _showReviewPreviousDialog());
+    }
+    // Bei skipAhead: Vorschlagen, direkt zur nächsten Lektion zu gehen.
+    if (action == AdaptiveAction.skipAhead && mounted) {
+      Future.microtask(() => _showSkipAheadDialog());
+    }
+  }
+
+  void _showReviewPreviousDialog() {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kurz wiederholen'),
+        content: Text(AdaptiveEngine.describe(AdaptiveAction.reviewPrevious)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Weiter probieren'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Rücksprung zur Modul-Übersicht – User wählt selbst.
+              Navigator.of(context).pop();
+            },
+            child: const Text('Zur Übersicht'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSkipAheadDialog() {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Schnelllerner! 🚀'),
+        content: const Text(
+          'Du hast die Lektion mit über 90% Genauigkeit gemeistert.\n\n'
+          'Möchtest du direkt zur nächsten Lektion?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hier bleiben'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Klar!'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Pädagogik-Info zur aktuellen Lektion mit Fallback-Kette:
+  /// 1. (zukünftig) `_lesson.pedagogy` direkt im Lesson-Modell
+  /// 2. `LearningRules.lessonPedagogy[id]`
+  /// 3. Default mit `XmariSetup.beginnerDefault`
+  LessonPedagogyInfo _getPedagogy() {
+    return LearningRules.lookupOrDefault(widget.lessonId);
   }
 
   @override
   void dispose() {
+    _handsFreeSub?.cancel();
     WakelockPlus.disable();
     // Best-effort end practice session.
     ref.read(practiceSessionTrackerProvider).end();
@@ -135,7 +271,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         state.attempts.last.exerciseIndex == state.currentExerciseIndex &&
         !_isExerciseComplete) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _isExerciseComplete = true);
+        if (!mounted) return;
+        setState(() => _isExerciseComplete = true);
+        _runAdaptiveEvaluation(state.attempts.last.accuracy);
       });
     }
 
@@ -164,8 +302,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
             icon: const Icon(Icons.help_outline, size: 20),
             tooltip: 'So geht\'s',
             onPressed: () {
-              final tip = LearningRules.lessonPedagogy[widget.lessonId]
-                  ?.xmariSetup?.explanation;
+              final tip = _getPedagogy().xmariSetup.explanation;
               ShowMeHowOverlay.show(
                 context,
                 instruction: steps.isNotEmpty
@@ -241,6 +378,47 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                       total: steps.length,
                       instruction: steps[_currentStep],
                     ),
+                  // Interaktives Griffbrett: zeigt die Ziel-Position der
+                  // aktuellen Übung. Erscheint nur wenn die Note auf dem
+                  // Griffbrett ableitbar ist.
+                  if (state.currentExercise?.targetNoteOrChord != null) ...[
+                    const SizedBox(height: 16),
+                    Builder(builder: (_) {
+                      final note = state.currentExercise!.targetNoteOrChord;
+                      final positions = FretboardWidget.positionsForNote(note);
+                      if (positions.isEmpty) return const SizedBox.shrink();
+                      return Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardDark,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.outline),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4, bottom: 6),
+                              child: Text(
+                                'Position: $note',
+                                style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            FretboardWidget(
+                              highlightedPositions: positions,
+                              activePosition: positions.first,
+                              showFingerNumbers: true,
+                              showNoteNames: true,
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
                   const SizedBox(height: 24),
                   if ((isLastStep || steps.isEmpty) && !_isExerciseComplete) ...[
                     HandModeSelector(
@@ -274,6 +452,14 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                       },
                     ),
                   if (_isExerciseComplete) _AccuracyResult(accuracy: accuracy),
+                  if (_isExerciseComplete &&
+                      _lastAdaptiveAction != null &&
+                      !_adaptiveBannerDismissed)
+                    _AdaptiveHintBanner(
+                      action: _lastAdaptiveAction!,
+                      onDismiss: () =>
+                          setState(() => _adaptiveBannerDismissed = true),
+                    ),
                 ],
               ),
             ),
@@ -329,20 +515,19 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           ),  // closes Column
           if (!_xmariSetupShown)
             Builder(builder: (ctx) {
-              final pedagogy =
-                  LearningRules.lessonPedagogy[widget.lessonId];
-              if (pedagogy?.xmariSetup == null) return const SizedBox.shrink();
+              // Jede Lektion hat dank Fallback-Kette ein Setup.
+              final pedagogy = _getPedagogy();
               return Container(
                 color: Colors.black54,
                 child: Center(
                   child: XmariSetupCard(
-                    setup: pedagogy!.xmariSetup,
+                    setup: pedagogy.xmariSetup,
                     onDismiss: () => setState(() => _xmariSetupShown = true),
                   ),
                 ),
               );
             }),
-          const HandsFreeOverlay(),
+          const hf.HandsFreeOverlay(),
         ],  // closes Stack children
       ),  // closes Stack
     );
@@ -701,4 +886,81 @@ class _GaugePainter extends CustomPainter {
   @override
   bool shouldRepaint(_GaugePainter oldDelegate) =>
       oldDelegate.accuracy != accuracy;
+}
+
+
+class _AdaptiveHintBanner extends StatelessWidget {
+  final AdaptiveAction action;
+  final VoidCallback onDismiss;
+
+  const _AdaptiveHintBanner({
+    required this.action,
+    required this.onDismiss,
+  });
+
+  Color _color(BuildContext ctx) {
+    switch (action) {
+      case AdaptiveAction.skipAhead:
+      case AdaptiveAction.celebrate:
+        return Colors.green;
+      case AdaptiveAction.simplify:
+      case AdaptiveAction.repeatSimplified:
+        return Colors.amber;
+      case AdaptiveAction.reviewPrevious:
+      case AdaptiveAction.goBack:
+        return Colors.orange;
+      case AdaptiveAction.continue_:
+      case AdaptiveAction.proceed:
+        return Theme.of(ctx).primaryColor;
+    }
+  }
+
+  IconData _icon() {
+    switch (action) {
+      case AdaptiveAction.skipAhead:
+      case AdaptiveAction.celebrate:
+        return Icons.rocket_launch;
+      case AdaptiveAction.simplify:
+      case AdaptiveAction.repeatSimplified:
+        return Icons.lightbulb_outline;
+      case AdaptiveAction.reviewPrevious:
+      case AdaptiveAction.goBack:
+        return Icons.replay;
+      default:
+        return Icons.thumb_up;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _color(context);
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: c.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(_icon(), size: 20, color: c),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              AdaptiveEngine.describe(action),
+              style: TextStyle(color: c, fontWeight: FontWeight.w600),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, size: 18, color: c),
+            tooltip: 'Hinweis ausblenden',
+            onPressed: onDismiss,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
 }

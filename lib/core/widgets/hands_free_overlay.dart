@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../audio/hands_free_service.dart';
@@ -10,35 +12,105 @@ final handsFreeServiceProvider = Provider<HandsFreeService>((ref) {
 
 final handsFreeModeProvider = StateProvider<HandsFreeMode>((ref) => HandsFreeMode.off);
 
-class HandsFreeOverlay extends ConsumerWidget {
+class HandsFreeOverlay extends ConsumerStatefulWidget {
   const HandsFreeOverlay({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HandsFreeOverlay> createState() => _HandsFreeOverlayState();
+}
+
+class _HandsFreeOverlayState extends ConsumerState<HandsFreeOverlay> {
+  String? _recognizedToast;
+  Timer? _hideToastTimer;
+  StreamSubscription<String>? _textSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final svc = ref.read(handsFreeServiceProvider);
+    _textSub = svc.recognizedTextStream.listen((text) {
+      if (text.isEmpty) return;
+      _hideToastTimer?.cancel();
+      setState(() => _recognizedToast = text);
+      _hideToastTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _recognizedToast = null);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _hideToastTimer?.cancel();
+    _textSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final mode = ref.watch(handsFreeModeProvider);
+    final isVoiceListening = mode == HandsFreeMode.voice &&
+        ref.read(handsFreeServiceProvider).isListening;
 
     return Positioned(
       right: 12,
       bottom: 12,
       child: SafeArea(
         minimum: const EdgeInsets.only(bottom: 88),
-        child: GestureDetector(
-          onTap: () => _showModeSheet(context, ref),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: mode != HandsFreeMode.off
-                  ? const Color(0xFF7C3AED).withOpacity(0.9)
-                  : Colors.grey.withOpacity(0.3),
-              shape: BoxShape.circle,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_recognizedToast != null && _recognizedToast!.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '🎙 $_recognizedToast',
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            GestureDetector(
+              onTap: () => _showModeSheet(context, ref),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: mode != HandsFreeMode.off
+                      ? const Color(0xFF7C3AED).withOpacity(0.9)
+                      : Colors.grey.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      _iconForMode(mode),
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    if (isVoiceListening)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.greenAccent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
-            child: Icon(
-              _iconForMode(mode),
-              color: Colors.white,
-              size: 22,
-            ),
-          ),
+          ],
         ),
       ),
     );

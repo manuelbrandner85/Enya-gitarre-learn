@@ -199,8 +199,11 @@ class DailyStatsTable extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// Test-Konstruktor – erlaubt In-Memory-Datenbanken in Unit-Tests.
+  AppDatabase.fromExecutor(super.executor);
+
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -327,6 +330,31 @@ class AppDatabase extends _$AppDatabase {
               t.userId.equals(userId) & t.lessonId.equals(lessonId))
           ..orderBy([(t) => OrderingTerm.desc(t.completedAt)]))
         .get();
+  }
+
+  /// Liefert alle Übungs-Ergebnisse eines Users zwischen [from] und [to].
+  Future<List<ExerciseResultsTableData>> getExerciseResultsBetween(
+    String userId,
+    DateTime from,
+    DateTime to,
+  ) async {
+    return (select(exerciseResultsTable)
+          ..where((t) =>
+              t.userId.equals(userId) &
+              t.completedAt.isBiggerOrEqualValue(from) &
+              t.completedAt.isSmallerOrEqualValue(to))
+          ..orderBy([(t) => OrderingTerm.desc(t.completedAt)]))
+        .get();
+  }
+
+  /// Summe aller `notesPlayed` über alle Exercise-Results des Users.
+  Future<int> getTotalNotesPlayed(String userId) async {
+    final notes = exerciseResultsTable.notesPlayed.sum();
+    final query = selectOnly(exerciseResultsTable)
+      ..addColumns([notes])
+      ..where(exerciseResultsTable.userId.equals(userId));
+    final row = await query.getSingleOrNull();
+    return row?.read(notes) ?? 0;
   }
 
   // =============================================

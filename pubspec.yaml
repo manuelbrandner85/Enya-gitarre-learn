@@ -1,6 +1,6 @@
 name: enya_gitarre_learn
 description: E-Gitarre Leicht - Gamifizierte E-Gitarren-Lern-App für die Enya XMARI
-version: 1.7.1+12
+version: 1.8.0+13
 publish_to: none
 
 environment:
@@ -87,6 +87,7 @@ dev_dependencies:
   json_serializable: ^6.9.0
   drift_dev: ^2.22.1
   flutter_lints: ^5.0.0
+  mocktail: ^1.0.4
 flutter:
   uses-material-design: true
   generate: true
@@ -95,6 +96,7 @@ flutter:
     - assets/audio/
     - assets/audio/notes/
     - assets/audio/chords/
+    - assets/audio/backing_tracks/
     - assets/images/
     - assets/animations/
     - assets/animations/techniques/

@@ -13,6 +13,7 @@ import '../../core/database/app_database.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/utils/constants.dart';
+import '../songs/screens/song_library_screen.dart' show songUnlockProvider;
 import '../../core/audio/hands_free_service.dart';
 import '../../core/widgets/hands_free_overlay.dart';
 
@@ -215,6 +216,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             iconColor: AppColors.warning,
           ),
           _SettingsTile(
+            icon: Icons.lock_outline,
+            title: 'Song-Freischaltcode zurücksetzen',
+            subtitle: 'Sperrt alle Songs wieder bis zu ihrem Modul',
+            iconColor: AppColors.warning,
+            onTap: () => _resetSongUnlock(),
+          ),
+          _SettingsTile(
             icon: Icons.delete_outline,
             title: 'Alle Daten löschen',
             subtitle: 'Warnung: Alle Fortschritte werden gelöscht',
@@ -333,6 +341,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (mounted) {
       context.go('/onboarding');
     }
+  }
+
+  Future<void> _resetSongUnlock() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Songs sperren?'),
+        content: const Text(
+          'Wenn du den Code zurücksetzt, sind alle Songs wieder bis zu '
+          'ihrem benötigten Modul gesperrt. Du kannst sie jederzeit mit '
+          'dem Passwort "open" wieder freischalten.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Abbrechen'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sperren'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    await ref.read(songUnlockProvider.notifier).lock();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Songs wieder gesperrt.')),
+    );
   }
 
   void _showDeleteDialog() {

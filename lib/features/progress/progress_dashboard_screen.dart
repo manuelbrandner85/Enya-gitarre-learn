@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:percent_indicator/percent_indicator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/theme/colors.dart';
 import '../../core/gamification/level_manager.dart';
@@ -13,6 +14,73 @@ import '../../core/models/achievement.dart';
 import '../../core/progress/progress_comparator.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/utils/constants.dart';
+
+/// Vergleich der Genauigkeit der letzten 7 Tage gegen die 7 Tage davor.
+/// Liefert eine [ComparisonData] mit echten DB-Werten oder
+/// `ComparisonData.empty()` falls keine Übungs-Ergebnisse vorhanden sind.
+final progressComparisonProvider =
+    FutureProvider.autoDispose<ComparisonData>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString(AppConstants.prefKeyUserId);
+  if (userId == null) return const ComparisonData.empty();
+
+  final now = DateTime.now();
+  final weekAgo = now.subtract(const Duration(days: 7));
+  final twoWeeksAgo = now.subtract(const Duration(days: 14));
+
+  final recent =
+      await db.getExerciseResultsBetween(userId, weekAgo, now);
+  final previous =
+      await db.getExerciseResultsBetween(userId, twoWeeksAgo, weekAgo);
+
+  if (recent.isEmpty && previous.isEmpty) {
+    return const ComparisonData.empty();
+  }
+
+  double avg(List<dynamic> rows) {
+    if (rows.isEmpty) return 0.0;
+    double sum = 0;
+    for (final r in rows) {
+      sum += (r.accuracy as double);
+    }
+    return sum / rows.length;
+  }
+
+  // Echte Presets-Unlocked aus dem Profil
+  final profile =
+      ref.read(currentUserProfileProvider).valueOrNull;
+  final modulesNow = profile?.totalModulesCompleted ?? 0;
+  final presetsNow = modulesNow >= 12
+      ? 4
+      : modulesNow >= 9
+          ? 3
+          : modulesNow >= 6
+              ? 2
+              : modulesNow >= 3
+                  ? 1
+                  : 0;
+  // Naive Annahme: vor 7 Tagen ein Modul weniger.
+  final presetsBefore = (presetsNow > 0 ? presetsNow - 1 : 0);
+
+  return ComparisonData(
+    accuracyThen: avg(previous),
+    accuracyNow: avg(recent),
+    daysDiff: 7,
+    presetsUnlockedThen: presetsBefore,
+    presetsUnlockedNow: presetsNow,
+  );
+});
+
+/// Summe aller jemals gespielten Noten – aus ExerciseResults.notesPlayed.
+final totalNotesPlayedProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+  final db = ref.watch(databaseProvider);
+  final prefs = await SharedPreferences.getInstance();
+  final userId = prefs.getString(AppConstants.prefKeyUserId);
+  if (userId == null) return 0;
+  return db.getTotalNotesPlayed(userId);
+});
 
 class ProgressDashboardScreen extends ConsumerWidget {
   const ProgressDashboardScreen({super.key});
@@ -55,12 +123,17 @@ class ProgressDashboardScreen extends ConsumerWidget {
 
           const SizedBox(height: 16),
 
-          // Stats grid
-          _StatsGrid(
-            totalMinutes: totalMinutes,
-            lessonsCompleted: lessonsCompleted,
-            modulesCompleted: modulesCompleted,
-            totalNotes: 0,
+          // Stats grid (mit echtem totalNotes-Wert)
+          Consumer(
+            builder: (ctx, ref, _) {
+              final notes = ref.watch(totalNotesPlayedProvider).valueOrNull ?? 0;
+              return _StatsGrid(
+                totalMinutes: totalMinutes,
+                lessonsCompleted: lessonsCompleted,
+                modulesCompleted: modulesCompleted,
+                totalNotes: notes,
+              );
+            },
           ).animate(delay: 200.ms).fadeIn(),
 
           const SizedBox(height: 16),
@@ -78,11 +151,8 @@ class ProgressDashboardScreen extends ConsumerWidget {
 
           const SizedBox(height: 16),
 
-          // Progress comparator
-          _ProgressComparatorCard(
-            modulesCompleted: modulesCompleted,
-            totalMinutes: totalMinutes,
-          ).animate(delay: 500.ms).fadeIn(),
+          // Progress comparator (echte DB-Daten)
+          const _ProgressComparatorCard().animate(delay: 500.ms).fadeIn(),
 
           const SizedBox(height: 32),
         ],
@@ -615,30 +685,75 @@ class _AchievementsPreview extends StatelessWidget {
   }
 }
 
-class _ProgressComparatorCard extends StatelessWidget {
-  final int modulesCompleted;
-  final int totalMinutes;
-
-  const _ProgressComparatorCard({
-    required this.modulesCompleted,
-    required this.totalMinutes,
-  });
+class _ProgressComparatorCard extends ConsumerWidget {
+  const _ProgressComparatorCard();
 
   @override
-  Widget build(BuildContext context) {
-    final presetsUnlocked = (modulesCompleted >= 12 ? 4 :
-        modulesCompleted >= 9 ? 3 :
-        modulesCompleted >= 6 ? 2 :
-        modulesCompleted >= 3 ? 1 : 0);
-
-    final data = ProgressComparator.compare(
-      accuracyBefore: (totalMinutes > 60 ? 0.55 : 0.40),
-      accuracyNow: (modulesCompleted > 0 ? 0.72 + modulesCompleted * 0.02 : 0.50).clamp(0.0, 1.0),
-      days: 30,
-      presetsUnlockedBefore: (presetsUnlocked > 0 ? presetsUnlocked - 1 : 0),
-      presetsUnlockedNow: presetsUnlocked,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncData = ref.watch(progressComparisonProvider);
+    return asyncData.when(
+      loading: () => _placeholder(
+        context,
+        title: 'Dein Fortschritt',
+        message: 'Lade deine Übungs-Daten…',
+        icon: Icons.hourglass_top,
+      ),
+      error: (_, __) => _placeholder(
+        context,
+        title: 'Dein Fortschritt',
+        message: 'Konnte Verlauf nicht laden.',
+        icon: Icons.error_outline,
+      ),
+      data: (data) {
+        if (!data.hasData) {
+          return _placeholder(
+            context,
+            title: 'Dein Fortschritt',
+            message:
+                'Starte deine ersten Übungen, um deinen Fortschritt zu sehen.',
+            icon: Icons.play_arrow,
+          );
+        }
+        return _buildContent(context, data);
+      },
     );
+  }
 
+  Widget _placeholder(BuildContext context,
+      {required String title, required String message, required IconData icon}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outline),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        )),
+                const SizedBox(height: 4),
+                Text(message,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, ComparisonData data) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(

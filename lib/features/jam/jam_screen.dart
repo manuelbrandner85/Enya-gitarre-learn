@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../app/theme/colors.dart';
+import '../../core/audio/backing_track_generator.dart';
 import '../../core/bluetooth/bluetooth_service.dart';
 import '../../core/bluetooth/xmari_constants.dart';
 import '../../core/curriculum/pedagogy/learning_rules.dart';
@@ -72,10 +73,25 @@ class _JamScreenState extends ConsumerState<JamScreen> {
   String _key = 'A';
   int _bpm = 90;
   bool _isPlaying = false;
+  bool _isLoadingTrack = false;
+  double _trackVolume = 0.6;
   final AudioPlayer _player = AudioPlayer();
   Timer? _beatTimer;
   int _currentBeat = 1;
   int get _beatsPerMeasure => 4;
+
+  String _genreCode(JamGenre g) {
+    switch (g) {
+      case JamGenre.blues:
+        return BackingTrackGenerator.genreBlues;
+      case JamGenre.rock:
+        return BackingTrackGenerator.genreRock;
+      case JamGenre.pop:
+        return BackingTrackGenerator.genrePop;
+      case JamGenre.funk:
+        return BackingTrackGenerator.genreFunk;
+    }
+  }
 
   static const List<String> _keys = [
     'A', 'C', 'D', 'E', 'G', 'Am', 'Em', 'Dm'
@@ -103,17 +119,58 @@ class _JamScreenState extends ConsumerState<JamScreen> {
   Future<void> _togglePlay() async {
     if (_isPlaying) {
       _beatTimer?.cancel();
-      setState(() { _isPlaying = false; _currentBeat = 1; });
-    } else {
-      setState(() => _isPlaying = true);
-      final intervalMs = (60000 / _bpm).round();
-      _beatTimer = Timer.periodic(Duration(milliseconds: intervalMs), (t) {
-        if (!mounted) { t.cancel(); return; }
-        setState(() {
-          _currentBeat = (_currentBeat % _beatsPerMeasure) + 1;
-        });
+      await _player.stop();
+      setState(() {
+        _isPlaying = false;
+        _currentBeat = 1;
       });
+      return;
     }
+
+    setState(() => _isLoadingTrack = true);
+    try {
+      // Backing-Track on-the-fly generieren und im Loop spielen
+      final path = await BackingTrackGenerator.generate(
+        key: _key,
+        bpm: _bpm,
+        genre: _genreCode(_genre),
+      );
+      await _player.setLoopMode(LoopMode.all);
+      await _player.setVolume(_trackVolume);
+      await _player.setFilePath(path);
+      await _player.play();
+    } catch (e) {
+      // Bei Fehler: Track nicht starten, aber Beat-Timer trotzdem laufen lassen
+      // damit die visuelle Anzeige funktioniert
+      debugPrint('JamScreen: Backing-Track-Fehler: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingTrack = false);
+    }
+
+    if (!mounted) return;
+    setState(() => _isPlaying = true);
+
+    final intervalMs = (60000 / _bpm).round();
+    _beatTimer = Timer.periodic(Duration(milliseconds: intervalMs), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      setState(() {
+        _currentBeat = (_currentBeat % _beatsPerMeasure) + 1;
+      });
+    });
+  }
+
+  Future<void> _restartTrackForNewParams() async {
+    if (!_isPlaying) return;
+    _beatTimer?.cancel();
+    await _player.stop();
+    setState(() {
+      _isPlaying = false;
+      _currentBeat = 1;
+    });
+    await _togglePlay();
   }
 
   @override
@@ -146,10 +203,7 @@ class _JamScreenState extends ConsumerState<JamScreen> {
                   return GestureDetector(
                     onTap: () async {
                       setState(() => _genre = g);
-                      if (_isPlaying) {
-                        await _player.stop();
-                        setState(() => _isPlaying = false);
-                      }
+                      await _restartTrackForNewParams();
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
@@ -199,8 +253,11 @@ class _JamScreenState extends ConsumerState<JamScreen> {
                               .map((k) => DropdownMenuItem(
                                   value: k, child: Text(k)))
                               .toList(),
-                          onChanged: (v) {
-                            if (v != null) setState(() => _key = v);
+                          onChanged: (v) async {
+                            if (v != null) {
+                              setState(() => _key = v);
+                              await _restartTrackForNewParams();
+                            }
                           },
                         ),
                       ]),
@@ -220,19 +277,39 @@ class _JamScreenState extends ConsumerState<JamScreen> {
                           divisions: 20,
                           onChanged: (v) {
                             setState(() => _bpm = v.round());
-                            if (_isPlaying) {
-                              _beatTimer?.cancel();
-                              final intervalMs = (60000 / _bpm).round();
-                              _beatTimer = Timer.periodic(Duration(milliseconds: intervalMs), (t) {
-                                if (!mounted) { t.cancel(); return; }
-                                setState(() {
-                                  _currentBeat = (_currentBeat % _beatsPerMeasure) + 1;
-                                });
-                              });
-                            }
+                          },
+                          onChangeEnd: (_) async {
+                            await _restartTrackForNewParams();
                           },
                         ),
                       ]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Lautstärke des Backing-Tracks
+            Row(
+              children: [
+                const Icon(Icons.volume_down, size: 18, color: Colors.white54),
+                Expanded(
+                  child: Slider(
+                    value: _trackVolume,
+                    min: 0.0,
+                    max: 1.0,
+                    onChanged: (v) {
+                      setState(() => _trackVolume = v);
+                      _player.setVolume(v);
+                    },
+                  ),
+                ),
+                const Icon(Icons.volume_up, size: 18, color: Colors.white54),
+                SizedBox(
+                  width: 40,
+                  child: Text(
+                    '${(_trackVolume * 100).round()}%',
+                    style: const TextStyle(fontSize: 12),
+                    textAlign: TextAlign.right,
+                  ),
                 ),
               ],
             ),
@@ -343,16 +420,26 @@ class _JamScreenState extends ConsumerState<JamScreen> {
                 width: 80,
                 height: 80,
                 child: ElevatedButton(
-                  onPressed: _togglePlay,
+                  onPressed: _isLoadingTrack ? null : _togglePlay,
                   style: ElevatedButton.styleFrom(
                     shape: const CircleBorder(),
                     backgroundColor:
                         _isPlaying ? AppColors.error : AppColors.primary,
                   ),
-                  child: Icon(
-                      _isPlaying ? Icons.stop : Icons.play_arrow,
-                      size: 36,
-                      color: Colors.white),
+                  child: _isLoadingTrack
+                      ? const SizedBox(
+                          width: 28,
+                          height: 28,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(
+                          _isPlaying ? Icons.stop : Icons.play_arrow,
+                          size: 36,
+                          color: Colors.white,
+                        ),
                 ),
               ),
             ),

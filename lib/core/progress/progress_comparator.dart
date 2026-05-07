@@ -1,3 +1,4 @@
+/// Daten-Snapshot für den Fortschritts-Vergleichs-Karton im Dashboard.
 class ComparisonData {
   final double accuracyThen;
   final double accuracyNow;
@@ -5,13 +6,26 @@ class ComparisonData {
   final int presetsUnlockedThen;
   final int presetsUnlockedNow;
 
+  /// True wenn keine Übungs-Daten in einem der Zeiträume vorlagen –
+  /// dann zeigt die UI einen motivierenden Platzhalter statt fake Zahlen.
+  final bool hasData;
+
   const ComparisonData({
     required this.accuracyThen,
     required this.accuracyNow,
     required this.daysDiff,
     required this.presetsUnlockedThen,
     required this.presetsUnlockedNow,
+    this.hasData = true,
   });
+
+  const ComparisonData.empty()
+      : accuracyThen = 0.0,
+        accuracyNow = 0.0,
+        daysDiff = 7,
+        presetsUnlockedThen = 0,
+        presetsUnlockedNow = 0,
+        hasData = false;
 
   double get accuracyDelta => accuracyNow - accuracyThen;
   bool get isImproving => accuracyDelta > 0;
