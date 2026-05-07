@@ -12,7 +12,6 @@ import '../../core/utils/constants.dart';
 import '../../core/database/app_database.dart';
 import '../../core/curriculum/curriculum.dart';
 import '../../core/widgets/offline_banner.dart';
-import 'widgets/daily_plan_card.dart';
 
 // Tab indices (4 tabs)
 const int _tabLernen = 0;
@@ -99,15 +98,86 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: showCta
                   ? Column(
                       children: [
-                        WeiterUebenCard(
-                          lessonTitle:
-                              _lastLessonTitle ?? 'Modul 1 – Grundlagen',
+                        // Compact continue card + daily plan in one row
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: GestureDetector(
+                                  onTap: () => context.go('/home/lessons'),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      gradient: AppColors.primaryGradient,
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.play_circle_filled, color: Colors.white, size: 28),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const Text('Weiter üben', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                                              Text(
+                                                _lastLessonTitle ?? 'Modul 1 – Grundlagen',
+                                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 2,
+                                child: GestureDetector(
+                                  onTap: () => context.push('/home/daily-plan'),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.cardDark,
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: const [
+                                        Icon(Icons.calendar_today_outlined, color: AppColors.primary, size: 18),
+                                        SizedBox(height: 4),
+                                        Text('Tagesplan', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                                        Text('Starten', style: TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        SongbuchCard(
-                          onTap: () => _onTabTap(_tabSongbuch),
+                        // Quick action chips (horizontal scroll)
+                        SizedBox(
+                          height: 52,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                            children: [
+                              _SmallActionChip(icon: Icons.bolt, label: 'Schnell', color: const Color(0xFFFF6B35), onTap: () => context.push('/home/quick-practice')),
+                              _SmallActionChip(icon: Icons.music_note, label: 'Jam', color: const Color(0xFF4CAF50), onTap: () => context.push('/home/jam')),
+                              _SmallActionChip(icon: Icons.menu_book, label: 'Theorie', color: const Color(0xFF2196F3), onTap: () => context.push('/home/theory')),
+                              _SmallActionChip(icon: Icons.fitness_center, label: 'Aufwärmen', color: const Color(0xFFFF9800), onTap: () => context.push('/home/warmup')),
+                              _SmallActionChip(icon: Icons.library_music, label: 'Songs', color: const Color(0xFF7C3AED), onTap: () => _onTabTap(_tabSongbuch)),
+                            ],
+                          ),
                         ),
-                        const DailyPlanCard(),
-                        _QuickActionsRow(),
                         Expanded(child: widget.navigationShell),
                       ],
                     )
