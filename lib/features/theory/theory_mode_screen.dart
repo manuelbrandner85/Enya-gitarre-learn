@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/colors.dart';
+import '../../core/audio/reference_audio_service.dart';
 import '../../core/music_theory/note_colors.dart';
 
 enum TheoryCategory {
@@ -27,10 +28,19 @@ class _TheoryModeScreenState extends ConsumerState<TheoryModeScreen> {
   List<String> _options = [];
   bool? _lastAnswerCorrect;
 
+  final _audioService = ReferenceAudioService();
+
   static const _notes = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
   static const _chords = [
     'Em', 'Am', 'D', 'G', 'C', 'A', 'E', 'F', 'Bm', 'Dm'
   ];
+  static const _earTrainingNotes = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'];
+
+  @override
+  void dispose() {
+    _audioService.dispose();
+    super.dispose();
+  }
 
   void _startCategory(TheoryCategory cat) {
     setState(() {
@@ -61,12 +71,29 @@ class _TheoryModeScreenState extends ConsumerState<TheoryModeScreen> {
           _options = _generateOptions(chord, _chords);
         });
         break;
-      default:
+      case TheoryCategory.earTraining:
+        final note = _earTrainingNotes[rng.nextInt(_earTrainingNotes.length)];
         setState(() {
-          _currentQuestion = 'Theorie-Modus';
-          _correctAnswer = 'C';
-          _options = ['C', 'D', 'E', 'F'];
+          _currentQuestion = 'Welche Note hörst du?';
+          _correctAnswer = note;
+          _options = _generateOptions(note, _earTrainingNotes);
         });
+        // Play the note after a short delay
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (mounted) _audioService.playNote(note);
+        });
+        break;
+      case TheoryCategory.rhythmClap:
+        final patterns = ['4/4', '3/4', '6/8', '2/4'];
+        final correct = patterns[rng.nextInt(patterns.length)];
+        setState(() {
+          _currentQuestion = 'Welchen Takt erkennst du?\n(Stelle dir: TA ta ta TA vor)';
+          _correctAnswer = correct;
+          _options = patterns..shuffle();
+        });
+        break;
+      default:
+        break;
     }
   }
 
@@ -254,6 +281,12 @@ class _TheoryModeScreenState extends ConsumerState<TheoryModeScreen> {
                     fontSize: 18,
                   ),
                 ),
+              ),
+            if (_selectedCategory == TheoryCategory.earTraining)
+              TextButton.icon(
+                onPressed: () => _audioService.playNote(_correctAnswer ?? 'E4'),
+                icon: const Icon(Icons.volume_up, size: 16),
+                label: const Text('Note erneut abspielen'),
               ),
             const SizedBox(height: 24),
             GridView.count(
