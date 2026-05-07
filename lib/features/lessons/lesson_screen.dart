@@ -8,6 +8,7 @@ import '../../app/theme/colors.dart';
 import '../../core/curriculum/curriculum.dart';
 import '../../core/music_theory/note.dart';
 import '../../core/curriculum/hand_isolation.dart';
+import '../../core/curriculum/adaptive_engine.dart';
 import '../../core/curriculum/pedagogy/learning_rules.dart';
 import '../../core/models/lesson.dart';
 import '../../core/practice/practice_session_tracker.dart';
@@ -40,6 +41,11 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
   bool _xmariSetupShown = true; // true = already dismissed (won't show)
   PracticeHand _practiceHand = PracticeHand.both;
 
+  // Adaptive Difficulty State
+  int _consecutiveLowAttempts = 0;
+  AdaptiveAction? _lastAdaptiveAction;
+  bool _adaptiveBannerDismissed = false;
+
   late final LessonKey _lessonKey;
   late final Lesson? _lesson;
 
@@ -65,6 +71,80 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _xmariSetupShown = false);
     });
+  }
+
+  /// Bewertet die letzte Übungs-Genauigkeit und triggert ggf. Adaptive
+  /// Difficulty Banner / Confirmation-Dialog.
+  void _runAdaptiveEvaluation(double accuracy) {
+    if (accuracy <= 0.50) {
+      _consecutiveLowAttempts += 1;
+    } else if (accuracy >= 0.70) {
+      _consecutiveLowAttempts = 0;
+    }
+    final action =
+        AdaptiveEngine.evaluate(accuracy, _consecutiveLowAttempts);
+    setState(() {
+      _lastAdaptiveAction = action;
+      _adaptiveBannerDismissed = false;
+    });
+
+    // Bei reviewPrevious: separater Dialog mit Vorschlag.
+    if (action == AdaptiveAction.reviewPrevious && mounted) {
+      Future.microtask(() => _showReviewPreviousDialog());
+    }
+    // Bei skipAhead: Vorschlagen, direkt zur nächsten Lektion zu gehen.
+    if (action == AdaptiveAction.skipAhead && mounted) {
+      Future.microtask(() => _showSkipAheadDialog());
+    }
+  }
+
+  void _showReviewPreviousDialog() {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kurz wiederholen'),
+        content: Text(AdaptiveEngine.describe(AdaptiveAction.reviewPrevious)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Weiter probieren'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              // Rücksprung zur Modul-Übersicht – User wählt selbst.
+              Navigator.of(context).pop();
+            },
+            child: const Text('Zur Übersicht'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSkipAheadDialog() {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Schnelllerner! 🚀'),
+        content: const Text(
+          'Du hast die Lektion mit über 90% Genauigkeit gemeistert.\n\n'
+          'Möchtest du direkt zur nächsten Lektion?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hier bleiben'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Klar!'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Pädagogik-Info zur aktuellen Lektion mit Fallback-Kette:
@@ -141,7 +221,9 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
         state.attempts.last.exerciseIndex == state.currentExerciseIndex &&
         !_isExerciseComplete) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _isExerciseComplete = true);
+        if (!mounted) return;
+        setState(() => _isExerciseComplete = true);
+        _runAdaptiveEvaluation(state.attempts.last.accuracy);
       });
     }
 
@@ -279,6 +361,14 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                       },
                     ),
                   if (_isExerciseComplete) _AccuracyResult(accuracy: accuracy),
+                  if (_isExerciseComplete &&
+                      _lastAdaptiveAction != null &&
+                      !_adaptiveBannerDismissed)
+                    _AdaptiveHintBanner(
+                      action: _lastAdaptiveAction!,
+                      onDismiss: () =>
+                          setState(() => _adaptiveBannerDismissed = true),
+                    ),
                 ],
               ),
             ),
@@ -705,4 +795,81 @@ class _GaugePainter extends CustomPainter {
   @override
   bool shouldRepaint(_GaugePainter oldDelegate) =>
       oldDelegate.accuracy != accuracy;
+}
+
+
+class _AdaptiveHintBanner extends StatelessWidget {
+  final AdaptiveAction action;
+  final VoidCallback onDismiss;
+
+  const _AdaptiveHintBanner({
+    required this.action,
+    required this.onDismiss,
+  });
+
+  Color _color(BuildContext ctx) {
+    switch (action) {
+      case AdaptiveAction.skipAhead:
+      case AdaptiveAction.celebrate:
+        return Colors.green;
+      case AdaptiveAction.simplify:
+      case AdaptiveAction.repeatSimplified:
+        return Colors.amber;
+      case AdaptiveAction.reviewPrevious:
+      case AdaptiveAction.goBack:
+        return Colors.orange;
+      case AdaptiveAction.continue_:
+      case AdaptiveAction.proceed:
+        return Theme.of(ctx).primaryColor;
+    }
+  }
+
+  IconData _icon() {
+    switch (action) {
+      case AdaptiveAction.skipAhead:
+      case AdaptiveAction.celebrate:
+        return Icons.rocket_launch;
+      case AdaptiveAction.simplify:
+      case AdaptiveAction.repeatSimplified:
+        return Icons.lightbulb_outline;
+      case AdaptiveAction.reviewPrevious:
+      case AdaptiveAction.goBack:
+        return Icons.replay;
+      default:
+        return Icons.thumb_up;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _color(context);
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: c.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(_icon(), size: 20, color: c),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              AdaptiveEngine.describe(action),
+              style: TextStyle(color: c, fontWeight: FontWeight.w600),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, size: 18, color: c),
+            tooltip: 'Hinweis ausblenden',
+            onPressed: onDismiss,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ),
+    );
+  }
 }
