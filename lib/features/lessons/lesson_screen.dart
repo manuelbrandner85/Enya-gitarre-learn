@@ -36,7 +36,7 @@ class LessonScreen extends ConsumerStatefulWidget {
 class _LessonScreenState extends ConsumerState<LessonScreen> {
   int _currentStep = 0;
   bool _isExerciseComplete = false;
-  bool _xmariSetupShown = false;
+  bool _xmariSetupShown = true; // true = already dismissed (won't show)
   PracticeHand _practiceHand = PracticeHand.both;
 
   late final LessonKey _lessonKey;

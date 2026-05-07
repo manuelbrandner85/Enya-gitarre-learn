@@ -73,6 +73,9 @@ class _JamScreenState extends ConsumerState<JamScreen> {
   int _bpm = 90;
   bool _isPlaying = false;
   final AudioPlayer _player = AudioPlayer();
+  Timer? _beatTimer;
+  int _currentBeat = 1;
+  int get _beatsPerMeasure => 4;
 
   static const List<String> _keys = [
     'A', 'C', 'D', 'E', 'G', 'Am', 'Em', 'Dm'
@@ -92,28 +95,24 @@ class _JamScreenState extends ConsumerState<JamScreen> {
 
   @override
   void dispose() {
+    _beatTimer?.cancel();
     _player.dispose();
     super.dispose();
   }
 
   Future<void> _togglePlay() async {
     if (_isPlaying) {
-      await _player.stop();
-      setState(() => _isPlaying = false);
+      _beatTimer?.cancel();
+      setState(() { _isPlaying = false; _currentBeat = 1; });
     } else {
-      try {
-        await _player.setAsset(
-            'assets/audio/backing_tracks/${_genre.name}_${_key.toLowerCase()}.mp3');
-        await _player.setLoopMode(LoopMode.one);
-        await _player.play();
-      } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Backing-Track nicht verfügbar')),
-          );
-        }
-      }
       setState(() => _isPlaying = true);
+      final intervalMs = (60000 / _bpm).round();
+      _beatTimer = Timer.periodic(Duration(milliseconds: intervalMs), (t) {
+        if (!mounted) { t.cancel(); return; }
+        setState(() {
+          _currentBeat = (_currentBeat % _beatsPerMeasure) + 1;
+        });
+      });
     }
   }
 
@@ -219,8 +218,19 @@ class _JamScreenState extends ConsumerState<JamScreen> {
                           min: 60,
                           max: 160,
                           divisions: 20,
-                          onChanged: (v) =>
-                              setState(() => _bpm = v.round()),
+                          onChanged: (v) {
+                            setState(() => _bpm = v.round());
+                            if (_isPlaying) {
+                              _beatTimer?.cancel();
+                              final intervalMs = (60000 / _bpm).round();
+                              _beatTimer = Timer.periodic(Duration(milliseconds: intervalMs), (t) {
+                                if (!mounted) { t.cancel(); return; }
+                                setState(() {
+                                  _currentBeat = (_currentBeat % _beatsPerMeasure) + 1;
+                                });
+                              });
+                            }
+                          },
                         ),
                       ]),
                 ),
@@ -308,6 +318,25 @@ class _JamScreenState extends ConsumerState<JamScreen> {
                 ),
               ),
             const SizedBox(height: 24),
+            // Beat indicator
+            if (_isPlaying)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(_beatsPerMeasure, (i) {
+                  final isActive = (i + 1) == _currentBeat;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 80),
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    width: isActive ? 24 : 14,
+                    height: isActive ? 24 : 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isActive ? _genre.color : AppColors.outline,
+                    ),
+                  );
+                }),
+              ),
+            const SizedBox(height: 16),
             // Play Button
             Center(
               child: SizedBox(

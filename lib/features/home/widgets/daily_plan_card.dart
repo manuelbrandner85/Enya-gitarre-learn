@@ -11,7 +11,20 @@ class DailyPlanCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(currentUserProfileProvider).value;
+    final profileAsync = ref.watch(currentUserProfileProvider);
+
+    // Show placeholder while loading or when profile is unavailable
+    if (profileAsync.isLoading) {
+      return const Card(
+        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
+    final profile = profileAsync.value;
     final completedModules = profile?.totalModulesCompleted ?? 0;
     final plan = DailyPlanGenerator.generatePlan(
       userId: profile?.id ?? '',

@@ -63,10 +63,13 @@ class ModuleOverviewScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: JourneyMapWidget(
-                completedModules: completedModules,
-                currentModule: completedModules + 1,
-                totalModules: modules.length,
+              child: SizedBox(
+                height: 620,
+                child: JourneyMapWidget(
+                  completedModules: completedModules,
+                  currentModule: completedModules + 1,
+                  totalModules: modules.length,
+                ),
               ),
             ),
           ),
