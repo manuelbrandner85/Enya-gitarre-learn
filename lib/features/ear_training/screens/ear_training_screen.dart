@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
+import 'package:enya_gitarre_learn/core/audio/tone_generator.dart';
 import 'package:enya_gitarre_learn/core/providers/app_providers.dart';
 import 'package:enya_gitarre_learn/core/utils/constants.dart';
 
@@ -149,11 +150,25 @@ class _GameSessionState extends ConsumerState<_GameSession> {
 
   Future<void> _play() async {
     try {
-      await _player.setAsset(
-          'assets/audio/ear/${widget.mode.name}_${_correct.replaceAll(' ', '_').toLowerCase()}.mp3');
+      String path;
+      switch (widget.mode) {
+        case EarTrainingMode.intervals:
+          final semis = ToneGenerator.intervalSemitones[_correct] ?? [0, 7];
+          path = await ToneGenerator.generateSequence(semis);
+          break;
+        case EarTrainingMode.chords:
+          final semis = ToneGenerator.chordSemitones[_correct] ?? [0, 4, 7];
+          path = await ToneGenerator.generateChord(semis);
+          break;
+        case EarTrainingMode.scales:
+          final semis = ToneGenerator.scaleSemitones[_correct] ?? [0, 2, 4, 5, 7, 9, 11, 12];
+          path = await ToneGenerator.generateSequence(semis, noteDuration: 0.32, gapDuration: 0.04);
+          break;
+      }
+      await _player.setFilePath(path);
       await _player.play();
-    } catch (_) {
-      // placeholder asset
+    } catch (e) {
+      debugPrint('EarTraining play error: $e');
     }
   }
 

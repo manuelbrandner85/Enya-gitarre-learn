@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
+import 'package:enya_gitarre_learn/core/audio/tone_generator.dart';
 import 'package:enya_gitarre_learn/core/music_theory/note.dart';
 import 'package:enya_gitarre_learn/core/music_theory/scale.dart';
 import 'package:enya_gitarre_learn/core/utils/constants.dart';
@@ -56,16 +57,17 @@ class _ScaleLibraryScreenState extends ConsumerState<ScaleLibraryScreen> {
 
   Future<void> _play() async {
     try {
-      await _player.setAsset(
-        'assets/audio/scales/${_root.toLowerCase()}_${_type.name}.mp3',
+      final intervals = _type.intervals;
+      final semis = [...intervals, 12];
+      final path = await ToneGenerator.generateSequence(
+        semis,
+        noteDuration: 0.35,
+        gapDuration: 0.05,
       );
+      await _player.setFilePath(path);
       await _player.play();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Audio nicht verfügbar')),
-        );
-      }
+    } catch (e) {
+      debugPrint('ScaleLibrary play error: $e');
     }
   }
 

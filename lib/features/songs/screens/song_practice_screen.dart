@@ -28,6 +28,7 @@ class _SongPracticeScreenState extends ConsumerState<SongPracticeScreen>
 
   bool _isPlaying = false;
   bool _backingTrack = true;
+  bool _usingClickFallback = false;
   double _tempo = 1.0;
   _PracticeMode _mode = _PracticeMode.practice;
 
@@ -108,6 +109,13 @@ class _SongPracticeScreenState extends ConsumerState<SongPracticeScreen>
     );
     _playBars = _flattenBars(_song);
     _loadBestAccuracy();
+    _initClickPlayer();
+  }
+
+  Future<void> _initClickPlayer() async {
+    try {
+      await _player.setAsset('assets/audio/metronome_click.wav');
+    } catch (_) {}
   }
 
   Future<void> _loadBestAccuracy() async {
@@ -189,6 +197,9 @@ class _SongPracticeScreenState extends ConsumerState<SongPracticeScreen>
       setState(() {
         _currentBeat = (_currentBeat + 1) % 4;
       });
+      if (_usingClickFallback) {
+        _player.seek(Duration.zero).then((_) => _player.play());
+      }
     });
   }
 
@@ -238,12 +249,11 @@ class _SongPracticeScreenState extends ConsumerState<SongPracticeScreen>
         await _player.setAsset('assets/audio/songs/${_song.id}.mp3');
         await _player.setSpeed(_tempo);
         await _player.play();
+        _usingClickFallback = false;
       } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Backing-Track nicht verfügbar')),
-          );
-        }
+        // No pre-recorded backing track — use metronome click as beat reference
+        await _initClickPlayer();
+        _usingClickFallback = true;
       }
     }
     setState(() {

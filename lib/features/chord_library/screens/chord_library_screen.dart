@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
+import 'package:enya_gitarre_learn/core/audio/tone_generator.dart';
 import 'package:enya_gitarre_learn/core/music_theory/chord.dart';
 import 'package:enya_gitarre_learn/core/music_theory/scale.dart';
 import 'package:enya_gitarre_learn/features/lessons/widgets/chord_diagram_widget.dart';
@@ -172,16 +173,12 @@ class _ChordDetailSheetState extends State<_ChordDetailSheet> {
 
   Future<void> _play() async {
     try {
-      await _player.setAsset(
-        'assets/audio/chords/${widget.chord.name.toLowerCase()}.mp3',
-      );
+      final semis = ToneGenerator.semitonesByChordTypeName(widget.chord.type.name);
+      final path = await ToneGenerator.generateChord(semis);
+      await _player.setFilePath(path);
       await _player.play();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Audio nicht verfügbar')),
-        );
-      }
+    } catch (e) {
+      debugPrint('ChordLibrary play error: $e');
     }
   }
 

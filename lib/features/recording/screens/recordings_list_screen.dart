@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
 import 'package:enya_gitarre_learn/core/database/app_database.dart';
@@ -106,9 +109,20 @@ class _RecordingTileState extends ConsumerState<_RecordingTile> {
     widget.onChanged();
   }
 
-  void _share() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Pfad: ${widget.recording.filePath}')),
+  Future<void> _share() async {
+    final file = File(widget.recording.filePath);
+    if (!await file.exists()) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Datei nicht gefunden')),
+      );
+      return;
+    }
+    final title = widget.recording.title.isEmpty ? 'Aufnahme' : widget.recording.title;
+    await Share.shareXFiles(
+      [XFile(widget.recording.filePath)],
+      text: title,
+      subject: title,
     );
   }
 
