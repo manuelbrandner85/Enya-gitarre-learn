@@ -18,23 +18,26 @@ class HandsFreeOverlay extends ConsumerWidget {
     final mode = ref.watch(handsFreeModeProvider);
 
     return Positioned(
-      bottom: 80,
-      right: 16,
-      child: GestureDetector(
-        onTap: () => _showModeSheet(context, ref),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: mode != HandsFreeMode.off
-                ? const Color(0xFF7C3AED).withOpacity(0.9)
-                : Colors.grey.withOpacity(0.3),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            _iconForMode(mode),
-            color: Colors.white,
-            size: 22,
+      right: 12,
+      bottom: 12,
+      child: SafeArea(
+        minimum: const EdgeInsets.only(bottom: 88),
+        child: GestureDetector(
+          onTap: () => _showModeSheet(context, ref),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: mode != HandsFreeMode.off
+                  ? const Color(0xFF7C3AED).withOpacity(0.9)
+                  : Colors.grey.withOpacity(0.3),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _iconForMode(mode),
+              color: Colors.white,
+              size: 22,
+            ),
           ),
         ),
       ),
