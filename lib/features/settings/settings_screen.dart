@@ -121,6 +121,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               },
             ),
           ),
+          _SettingsTile(
+            icon: Icons.swap_horiz,
+            title: 'Linkshänder-Modus',
+            subtitle: 'Griffbrett gespiegelt anzeigen',
+            trailing: Switch(
+              value: ref.watch(leftHandedProvider),
+              onChanged: (v) {
+                ref.read(leftHandedProvider.notifier).setValue(v);
+              },
+            ),
+          ),
 
           // Notifications
           _SectionHeader(title: 'Benachrichtigungen'),

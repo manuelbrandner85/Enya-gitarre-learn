@@ -37,5 +37,38 @@
   "@achievementUnlocked": {
     "placeholders": { "title": { "type": "String" } }
   },
-  "viewAction": "Anzeigen"
+  "viewAction": "Anzeigen",
+  "fretboardStringMnemonic": "Eine Alte Dame Geht Heringe Essen",
+  "fretboardBarreTip": "Drücke direkt hinter dem Bundstäbchen, nicht darauf.",
+  "fretboardZoomTitle": "Saite {string}, Bund {fret}",
+  "@fretboardZoomTitle": {
+    "placeholders": { "string": { "type": "int" }, "fret": { "type": "int" } }
+  },
+  "fretboardQuizQuestion": "Welche Note liegt hier?",
+  "fretboardQuizCorrect": "Richtig! {note}",
+  "@fretboardQuizCorrect": {
+    "placeholders": { "note": { "type": "String" } }
+  },
+  "fretboardQuizWrong": "Falsch – es war {note}",
+  "@fretboardQuizWrong": {
+    "placeholders": { "note": { "type": "String" } }
+  },
+  "fretboardStepAnimationReplay": "Nochmal",
+  "fretboardStepOf": "Finger {current} von {total}",
+  "@fretboardStepOf": {
+    "placeholders": { "current": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "strumHandDown": "Abwärts",
+  "strumHandUp": "Aufwärts",
+  "strumHandMuted": "Gedämpft",
+  "fretboardZoomClose": "Schließen",
+  "settingsLeftHanded": "Linkshänder-Modus",
+  "settingsLeftHandedSubtitle": "Griffbrett gespiegelt anzeigen",
+  "chordTransitionPlay": "Abspielen",
+  "chordTransitionStop": "Stop",
+  "fretboardListeningLabel": "Höre zu…",
+  "fretboardFingerIndex": "Zeigefinger",
+  "fretboardFingerMiddle": "Mittelfinger",
+  "fretboardFingerRing": "Ringfinger",
+  "fretboardFingerPinky": "Kleiner Finger"
 }

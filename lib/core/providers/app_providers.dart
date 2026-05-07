@@ -688,3 +688,31 @@ final lessonsProvider =
   final result = await repo.getLessonsForModule(moduleId);
   return result.getOrElse(() => []);
 });
+
+// =============================================
+// LEFT-HANDED MODE
+// =============================================
+
+class _BoolNotifier extends StateNotifier<bool> {
+  final String _key;
+  _BoolNotifier(this._key, bool defaultValue) : super(defaultValue) {
+    SharedPreferences.getInstance().then((prefs) {
+      state = prefs.getBool(_key) ?? defaultValue;
+    });
+  }
+  Future<void> toggle() async {
+    state = !state;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_key, state);
+  }
+  Future<void> setValue(bool v) async {
+    state = v;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_key, v);
+  }
+}
+
+/// Linkshänder-Modus (gespiegelte Griffbrett-Anzeige)
+final leftHandedProvider = StateNotifierProvider<_BoolNotifier, bool>((ref) {
+  return _BoolNotifier('pref_left_handed', false);
+});
