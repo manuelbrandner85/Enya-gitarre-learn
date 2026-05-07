@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme/colors.dart';
 import '../../core/audio/reference_audio_service.dart';
 import '../../core/music_theory/note_colors.dart';
+import '../../core/widgets/fretboard_quiz_widget.dart';
 
 enum TheoryCategory {
   fretboardQuiz,
@@ -27,6 +28,11 @@ class _TheoryModeScreenState extends ConsumerState<TheoryModeScreen> {
   String? _correctAnswer;
   List<String> _options = [];
   bool? _lastAnswerCorrect;
+
+  // Fretboard-Quiz: aktuelle Position + ggf. Reverse-Modus (User tippt)
+  FretPosition? _quizPosition;
+  bool _quizReverseMode = false;
+  String? _lastInfoMessage;
 
   final _audioService = ReferenceAudioService();
 
@@ -56,11 +62,28 @@ class _TheoryModeScreenState extends ConsumerState<TheoryModeScreen> {
     final rng = math.Random();
     switch (_selectedCategory) {
       case TheoryCategory.fretboardQuiz:
-        final note = _notes[rng.nextInt(_notes.length)];
+        // Ab Score 10 schaltet sich der Reverse-Modus ein:
+        // Note wird genannt, User tippt auf das Griffbrett.
+        _quizReverseMode = _score >= 10;
+        // Zufällige Position: Saite 1-6, Bund 0-12
+        final pos = FretPosition(
+          string: rng.nextInt(6) + 1,
+          fret: rng.nextInt(13),
+        );
+        final note = pos.noteName;
         setState(() {
-          _currentQuestion = 'Welche Note ist das?';
+          _quizPosition = pos;
           _correctAnswer = note;
-          _options = _generateOptions(note, _notes);
+          _lastInfoMessage = null;
+          if (_quizReverseMode) {
+            _currentQuestion =
+                'Tippe auf das Griffbrett: Wo liegt die Note "$note"?';
+            _options = const [];
+          } else {
+            _currentQuestion =
+                'Welche Note liegt auf Saite ${pos.string}, Bund ${pos.fret}?';
+            _options = _generateOptions(note, _notes);
+          }
         });
         break;
       case TheoryCategory.chordRecognition:
@@ -112,13 +135,30 @@ class _TheoryModeScreenState extends ConsumerState<TheoryModeScreen> {
       _lastAnswerCorrect = correct;
       _total++;
       if (correct) _score++;
+      // Bei Fretboard-Quiz: Erklärung anzeigen
+      if (_selectedCategory == TheoryCategory.fretboardQuiz &&
+          _quizPosition != null) {
+        _lastInfoMessage =
+            'Saite ${_quizPosition!.string}, Bund ${_quizPosition!.fret} = $_correctAnswer';
+      }
     });
-    Future.delayed(const Duration(milliseconds: 600), () {
+    Future.delayed(const Duration(milliseconds: 1100), () {
       if (mounted) {
-        setState(() => _lastAnswerCorrect = null);
+        setState(() {
+          _lastAnswerCorrect = null;
+          _lastInfoMessage = null;
+        });
         _nextQuestion();
       }
     });
+  }
+
+  /// Reverse-Modus: User tippt direkt auf eine Position. Korrekt wenn die
+  /// Note an der getippten Position dem gesuchten _correctAnswer entspricht.
+  void _onFretboardTap(FretPosition tapped) {
+    if (_lastAnswerCorrect != null) return; // Antwort bereits gegeben
+    final tappedNote = tapped.noteName;
+    _answer(tappedNote);
   }
 
   @override
@@ -230,10 +270,44 @@ class _TheoryModeScreenState extends ConsumerState<TheoryModeScreen> {
             const Spacer(),
             if (_currentQuestion != null)
               Text(_currentQuestion!,
+                  textAlign: TextAlign.center,
                   style: const TextStyle(
-                      fontSize: 22,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold)),
-            if (_correctAnswer != null) ...[
+            const SizedBox(height: 16),
+            // Fretboard-Quiz: zeige echtes Griffbrett
+            if (_selectedCategory == TheoryCategory.fretboardQuiz &&
+                _quizPosition != null) ...[
+              FretboardQuizWidget(
+                // Im Reverse-Modus: nichts hervorheben (User soll selbst tippen).
+                // Im Normal-Modus: markierte Position anzeigen.
+                highlight: _quizReverseMode ? null : _quizPosition,
+                // Im Reverse-Modus: Tap aktivieren
+                onPositionTap:
+                    _quizReverseMode ? _onFretboardTap : null,
+                startFret: (_quizPosition!.fret > 4)
+                    ? (_quizPosition!.fret - 2).clamp(0, 17)
+                    : 0,
+                fretCount: 5,
+                height: 180,
+              ),
+              if (_lastInfoMessage != null) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _lastInfoMessage!,
+                    style: const TextStyle(
+                        color: AppColors.info, fontSize: 13),
+                  ),
+                ),
+              ],
+            ] else if (_correctAnswer != null) ...[
               const SizedBox(height: 8),
               Container(
                 width: 80,
@@ -289,27 +363,30 @@ class _TheoryModeScreenState extends ConsumerState<TheoryModeScreen> {
                 label: const Text('Note erneut abspielen'),
               ),
             const SizedBox(height: 24),
-            GridView.count(
-              shrinkWrap: true,
-              crossAxisCount: 2,
-              childAspectRatio: 2.5,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              children: _options
-                  .map((opt) => ElevatedButton(
-                        onPressed: _lastAnswerCorrect != null
-                            ? null
-                            : () => _answer(opt),
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                AppColors.surfaceDark),
-                        child: Text(opt,
-                            style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold)),
-                      ))
-                  .toList(),
-            ),
+            if (_options.isNotEmpty)
+              GridView.count(
+                shrinkWrap: true,
+                crossAxisCount: 2,
+                childAspectRatio: 2.5,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                children: _options
+                    .map((opt) => ElevatedButton(
+                          onPressed: _lastAnswerCorrect != null
+                              ? null
+                              : () => _answer(opt),
+                          style: ElevatedButton.styleFrom(
+                              backgroundColor: NoteColors
+                                  .forNoteWithOpacity(opt[0], 0.2),
+                              foregroundColor:
+                                  NoteColors.forNote(opt[0])),
+                          child: Text(opt,
+                              style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold)),
+                        ))
+                    .toList(),
+              ),
           ],
         ),
       ),
