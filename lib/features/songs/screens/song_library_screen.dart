@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
 import 'package:enya_gitarre_learn/core/providers/app_providers.dart';
+import 'package:enya_gitarre_learn/features/songs/providers/song_user_data_provider.dart';
 
 class SectionBar {
   final String chord;
@@ -2694,6 +2695,9 @@ class SongLibraryScreen extends ConsumerStatefulWidget {
 class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
   String? _activeGenre;
   final Set<int> _diffFilter = {};
+  bool _favoritesOnly = false;
+  String _searchQuery = '';
+  final TextEditingController _searchCtrl = TextEditingController();
 
   static final List<String> _sortedGenres = () {
     final genres = kSongs.map((s) => s.genre).toSet().toList()..sort();
@@ -2708,14 +2712,25 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
     return map;
   }();
 
-  List<SongData> get _filtered {
-    final list = kSongs.where((s) {
+  List<SongData> _filteredWithFavorites(Set<String> favorites) {
+    final q = _searchQuery.toLowerCase();
+    return kSongs.where((s) {
       final gOk = _activeGenre == null || s.genre == _activeGenre;
       final dOk = _diffFilter.isEmpty || _diffFilter.contains(s.difficulty);
-      return gOk && dOk;
+      final fOk = !_favoritesOnly || favorites.contains(s.id);
+      final sOk = q.isEmpty ||
+          s.title.toLowerCase().contains(q) ||
+          s.artist.toLowerCase().contains(q) ||
+          s.genre.toLowerCase().contains(q);
+      return gOk && dOk && fOk && sOk;
     }).toList()
       ..sort((a, b) => a.difficulty.compareTo(b.difficulty));
-    return list;
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   void _showUnlockDialog(BuildContext context, bool isUnlocked) {
@@ -2797,15 +2812,45 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final songs = _filtered;
+    final favorites = ref.watch(songFavoritesProvider);
+    final recentIds = ref.watch(recentlyViewedProvider);
+    final songs = _filteredWithFavorites(favorites);
     final globalUnlocked = ref.watch(songUnlockProvider);
     final profile = ref.watch(currentUserProfileProvider).value;
     final completedModules = profile?.totalModulesCompleted ?? 0;
+
+    final recentSongs = recentIds
+        .map((id) => kSongs.where((s) => s.id == id).firstOrNull)
+        .whereType<SongData>()
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Songbuch'),
         automaticallyImplyLeading: !widget.isTab,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Suchen',
+            onPressed: () => showSearch(
+              context: context,
+              delegate: _SongSearchDelegate(
+                globalUnlocked: globalUnlocked,
+                completedModules: completedModules,
+                isTab: widget.isTab,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.queue_music),
+            tooltip: 'Setlisten',
+            onPressed: () => context.push('/home/setlists'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.piano),
+            tooltip: 'Akkord-Finder',
+            onPressed: () => context.push('/home/chord-finder'),
+          ),
           IconButton(
             icon: Icon(
               globalUnlocked ? Icons.lock_open : Icons.lock_outline,
@@ -2818,26 +2863,33 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
       ),
       body: Column(
         children: [
+          // Search bar (inline)
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            child: Row(
-              children: const [
-                Icon(Icons.mic, size: 14, color: AppColors.primaryLight),
-                SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    'Wähle einen Song und spiele ihn nach — mit echtem Mikrofon-Feedback',
-                    style: TextStyle(
-                      color: AppColors.primaryLight,
-                      fontSize: 11,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: TextField(
+              controller: _searchCtrl,
+              onChanged: (v) => setState(() => _searchQuery = v),
+              decoration: InputDecoration(
+                hintText: 'Song oder Künstler suchen…',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                filled: true,
+                fillColor: AppColors.cardDark,
+              ),
             ),
           ),
-          const SizedBox(height: 6),
+          // Genre filter chips
           SizedBox(
             height: 44,
             child: ListView(
@@ -2847,9 +2899,22 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
+                    label: const Icon(Icons.favorite, size: 16),
+                    selected: _favoritesOnly,
+                    selectedColor: Colors.red.withValues(alpha: 0.25),
+                    onSelected: (s) => setState(() => _favoritesOnly = s),
+                    tooltip: 'Favoriten',
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: FilterChip(
                     label: Text('Alle (${kSongs.length})'),
-                    selected: _activeGenre == null,
-                    onSelected: (_) => setState(() => _activeGenre = null),
+                    selected: _activeGenre == null && !_favoritesOnly,
+                    onSelected: (_) => setState(() {
+                      _activeGenre = null;
+                      _favoritesOnly = false;
+                    }),
                   ),
                 ),
                 for (final g in _sortedGenres)
@@ -2865,6 +2930,7 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
               ],
             ),
           ),
+          // Difficulty filter
           SizedBox(
             height: 44,
             child: ListView(
@@ -2885,47 +2951,107 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
                       ),
                       selected: _diffFilter.contains(d),
                       onSelected: (sel) => setState(() {
-                        if (sel) {
-                          _diffFilter.add(d);
-                        } else {
-                          _diffFilter.remove(d);
-                        }
+                        if (sel) { _diffFilter.add(d); } else { _diffFilter.remove(d); }
                       }),
                     ),
                   ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          // Recently viewed section
+          if (recentSongs.isNotEmpty && _searchQuery.isEmpty && !_favoritesOnly) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Row(
+                children: const [
+                  Icon(Icons.history, size: 14, color: AppColors.textSecondary),
+                  SizedBox(width: 6),
+                  Text('Zuletzt gespielt',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+            SizedBox(
+              height: 60,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: recentSongs.length,
+                itemBuilder: (ctx, i) {
+                  final s = recentSongs[i];
+                  return GestureDetector(
+                    onTap: () => context.push('/home/song-sheet/${s.id}'),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.cardDark,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.outline),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.title,
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(s.artist,
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 4),
+          ],
+          const SizedBox(height: 4),
           Expanded(
             child: songs.isEmpty
-                ? const Center(child: Text('Keine Songs gefunden'))
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.music_off, size: 48, color: AppColors.textTertiary),
+                        const SizedBox(height: 12),
+                        Text(
+                          _favoritesOnly ? 'Noch keine Favoriten' : 'Keine Songs gefunden',
+                          style: const TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     itemCount: songs.length,
                     itemBuilder: (context, i) {
                       final s = songs[i];
                       final available = _isSongAvailable(s, completedModules, globalUnlocked);
-                      return _SongCard(song: s, isTab: widget.isTab, isLocked: !available, onTapLocked: () {
-                        final moduleNum = s.requiredModuleId?.replaceAll('module-', '') ?? '?';
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            title: const Text('Song gesperrt'),
-                            content: Text('Dieser Song wird freigeschaltet, wenn du Modul $moduleNum abschließt.'),
-                            actions: [
-                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  _showCodeDialog(context);
-                                },
-                                child: const Text('Code eingeben'),
-                              ),
-                            ],
-                          ),
-                        );
-                      });
+                      return _SongCard(
+                        song: s,
+                        isTab: widget.isTab,
+                        isLocked: !available,
+                        onTapLocked: () {
+                          final moduleNum = s.requiredModuleId?.replaceAll('module-', '') ?? '?';
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Song gesperrt'),
+                              content: Text('Dieser Song wird freigeschaltet, wenn du Modul $moduleNum abschließt.'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+                                TextButton(
+                                  onPressed: () { Navigator.pop(ctx); _showCodeDialog(context); },
+                                  child: const Text('Code eingeben'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      );
                     },
                   ),
           ),
@@ -2935,7 +3061,66 @@ class _SongLibraryScreenState extends ConsumerState<SongLibraryScreen> {
   }
 }
 
-class _SongCard extends StatelessWidget {
+// ── Search delegate ───────────────────────────────────────────────────────────
+
+class _SongSearchDelegate extends SearchDelegate<SongData?> {
+  final bool globalUnlocked;
+  final int completedModules;
+  final bool isTab;
+
+  _SongSearchDelegate({
+    required this.globalUnlocked,
+    required this.completedModules,
+    required this.isTab,
+  }) : super(searchFieldLabel: 'Song oder Künstler suchen…');
+
+  @override
+  List<Widget> buildActions(BuildContext context) => [
+        IconButton(icon: const Icon(Icons.clear), onPressed: () => query = ''),
+      ];
+
+  @override
+  Widget buildLeading(BuildContext context) =>
+      IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => close(context, null));
+
+  @override
+  Widget buildResults(BuildContext context) => _buildList(context);
+
+  @override
+  Widget buildSuggestions(BuildContext context) => _buildList(context);
+
+  Widget _buildList(BuildContext context) {
+    final q = query.toLowerCase();
+    final results = kSongs.where((s) =>
+        s.title.toLowerCase().contains(q) ||
+        s.artist.toLowerCase().contains(q) ||
+        s.genre.toLowerCase().contains(q)).toList();
+    if (results.isEmpty) {
+      return const Center(child: Text('Keine Songs gefunden', style: TextStyle(color: AppColors.textSecondary)));
+    }
+    return ListView.builder(
+      itemCount: results.length,
+      itemBuilder: (ctx, i) {
+        final s = results[i];
+        final available = _isSongAvailable(s, completedModules, globalUnlocked);
+        return ListTile(
+          leading: CircleAvatar(
+            backgroundColor: AppColors.primary,
+            child: Text(s.title.substring(0, 1), style: const TextStyle(color: Colors.white)),
+          ),
+          title: Text(s.title, style: const TextStyle(color: AppColors.textPrimary)),
+          subtitle: Text('${s.artist} · ${s.genre}', style: const TextStyle(color: AppColors.textSecondary)),
+          trailing: available
+              ? const Icon(Icons.chevron_right, color: AppColors.textSecondary)
+              : const Icon(Icons.lock, color: AppColors.textSecondary),
+          onTap: available ? () { close(context, s); context.push('/home/song-sheet/${s.id}'); } : null,
+        );
+      },
+    );
+  }
+}
+
+class _SongCard extends ConsumerWidget {
   final SongData song;
   final bool isTab;
   final bool isLocked;
@@ -2948,7 +3133,9 @@ class _SongCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favorites = ref.watch(songFavoritesProvider);
+    final isFavorite = favorites.contains(song.id);
     return FutureBuilder<SharedPreferences>(
       future: SharedPreferences.getInstance(),
       builder: (context, snap) {
@@ -3044,13 +3231,29 @@ class _SongCard extends StatelessWidget {
                 ),
                 trailing: isLocked
                     ? const Icon(Icons.lock, color: AppColors.textSecondary)
-                    : const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : AppColors.textSecondary,
+                              size: 20,
+                            ),
+                            onPressed: () => ref.read(songFavoritesProvider.notifier).toggle(song.id),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                        ],
+                      ),
                 onTap: isLocked
                     ? onTapLocked
-                    : () {
-                        final base = isTab ? '/home/songbuch' : '/home/songs';
-                        context.go('$base/${song.id}');
-                      },
+                    : () => context.push('/home/song-sheet/${song.id}'),
+                onLongPress: isLocked
+                    ? null
+                    : () => _showSongOptions(context, ref),
               ),
             ],
           ),
@@ -3060,6 +3263,45 @@ class _SongCard extends StatelessWidget {
         }
         return tile;
       },
+    );
+  }
+
+  void _showSongOptions(BuildContext context, WidgetRef ref) {
+    final isFav = ref.read(songFavoritesProvider).contains(song.id);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surfaceDark,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.menu_book, color: AppColors.primary),
+              title: const Text('Chord Sheet anzeigen', style: TextStyle(color: AppColors.textPrimary)),
+              onTap: () { Navigator.pop(ctx); context.push('/home/song-sheet/${song.id}'); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.school, color: AppColors.primary),
+              title: const Text('Üben (mit Mikrofon)', style: TextStyle(color: AppColors.textPrimary)),
+              onTap: () { Navigator.pop(ctx); context.push('/home/songs/${song.id}'); },
+            ),
+            ListTile(
+              leading: Icon(isFav ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+              title: Text(isFav ? 'Aus Favoriten entfernen' : 'Zu Favoriten hinzufügen',
+                  style: const TextStyle(color: AppColors.textPrimary)),
+              onTap: () { ref.read(songFavoritesProvider.notifier).toggle(song.id); Navigator.pop(ctx); },
+            ),
+            ListTile(
+              leading: const Icon(Icons.queue_music, color: AppColors.primary),
+              title: const Text('Zu Setlist hinzufügen', style: TextStyle(color: AppColors.textPrimary)),
+              onTap: () { Navigator.pop(ctx); context.push('/home/setlists'); },
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

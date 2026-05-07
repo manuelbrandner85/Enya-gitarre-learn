@@ -37,6 +37,9 @@ import '../features/practice/warmup_screen.dart';
 import '../features/jam/jam_screen.dart';
 import '../features/theory/theory_mode_screen.dart';
 import '../core/gamification/certificate_generator.dart';
+import '../features/songs/screens/song_chord_sheet_screen.dart';
+import '../features/setlists/screens/setlists_screen.dart';
+import '../features/chord_finder/screens/chord_finder_screen.dart';
 
 part 'router.g.dart';
 
@@ -287,6 +290,24 @@ GoRouter appRouter(Ref ref) {
           );
           return CertificateDisplayPage(certificate: cert);
         },
+      ),
+      GoRoute(
+        path: '/home/song-sheet/:songId',
+        name: 'song-sheet',
+        builder: (context, state) {
+          final id = state.pathParameters['songId'] ?? '';
+          return SongChordSheetScreen(songId: id);
+        },
+      ),
+      GoRoute(
+        path: '/home/setlists',
+        name: 'setlists',
+        builder: (_, __) => const SetlistsScreen(),
+      ),
+      GoRoute(
+        path: '/home/chord-finder',
+        name: 'chord-finder',
+        builder: (_, __) => const ChordFinderScreen(),
       ),
       GoRoute(
         path: '/lesson-complete',
