@@ -199,8 +199,11 @@ class DailyStatsTable extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// Test-Konstruktor – erlaubt In-Memory-Datenbanken in Unit-Tests.
+  AppDatabase.fromExecutor(super.executor);
+
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
