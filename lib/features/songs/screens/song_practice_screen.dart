@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
 import 'package:enya_gitarre_learn/core/audio/pitch_detector.dart';
+import 'package:enya_gitarre_learn/core/audio/reference_audio_service.dart';
 import 'package:enya_gitarre_learn/core/music_theory/chord.dart';
 import 'package:enya_gitarre_learn/features/lessons/widgets/chord_diagram_widget.dart';
 import 'package:enya_gitarre_learn/features/songs/screens/song_library_screen.dart';
@@ -42,6 +43,8 @@ class _SongPracticeScreenState extends ConsumerState<SongPracticeScreen>
   int _currentBeat = 0;
   Timer? _beatTimer;
   Timer? _barTimer;
+
+  final _referenceAudio = ReferenceAudioService();
 
   // Pitch detection
   final _pitchDetector = PitchDetector();
@@ -159,6 +162,7 @@ class _SongPracticeScreenState extends ConsumerState<SongPracticeScreen>
     _pitchSub?.cancel();
     _pitchDetector.dispose();
     _player.dispose();
+    _referenceAudio.dispose();
     _scroll.dispose();
     super.dispose();
   }
@@ -422,13 +426,26 @@ class _SongPracticeScreenState extends ConsumerState<SongPracticeScreen>
           Expanded(
             child: Column(
               children: [
-                Text(
-                  currentChordName,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      currentChordName,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.volume_up,
+                          color: AppColors.primary, size: 22),
+                      tooltip: 'Akkord hören',
+                      onPressed: () =>
+                          _referenceAudio.playChord(currentChordName),
+                    ),
+                  ],
                 ),
                 if (currentChord != null)
                   ChordDiagramWidget(chord: currentChord, size: 160)

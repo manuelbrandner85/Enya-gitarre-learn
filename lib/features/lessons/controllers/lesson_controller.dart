@@ -216,22 +216,24 @@ class LessonController extends StateNotifier<LessonState> {
     }
 
     final exercise = state.currentExercise;
-    if (exercise == null) return;
 
-    final matched = _matchesTarget(result, exercise);
+    // Count any audible note when no exercise is defined.
+    final matched = exercise != null
+        ? _matchesTarget(result, exercise)
+        : result.amplitude > 0.05;
+
     if (!matched) return;
 
     final next = state.detectionsCaptured + 1;
     state = state.copyWith(detectionsCaptured: next);
 
-    final required = math.max(1, exercise.repetitionsRequired);
-    if (next >= required) {
-      // Auto-submit accuracy and advance.
-      final accuracy = computeAccuracyForExercise(exercise);
-      submitAttempt(accuracy);
-      // Brief pause before advancing — handled by the UI in practice; here we
-      // just advance immediately. UI can choose to show a result first.
-      stopListening();
+    if (exercise != null) {
+      final required = math.max(1, exercise.repetitionsRequired);
+      if (next >= required) {
+        final accuracy = computeAccuracyForExercise(exercise);
+        submitAttempt(accuracy);
+        stopListening();
+      }
     }
   }
 
@@ -313,6 +315,51 @@ class LessonController extends StateNotifier<LessonState> {
     if (targets.isEmpty) return r.amplitude > 0.05;
     final cls = r.midiNote % 12;
     return targets.any((t) => t.midiNumber % 12 == cls) && r.isOnPitch;
+  }
+
+  /// Submits an attempt using current accumulated pitch results.
+  /// Works even when no exercises are defined on the lesson.
+  void submitManualAttempt() {
+    final l = state.lesson;
+    if (l == null) return;
+
+    final exercise = state.currentExercise;
+    double accuracy;
+    if (exercise != null) {
+      accuracy = computeAccuracyForExercise(exercise);
+    } else {
+      final results = _recentResults.where((r) => r.amplitude > 0.02).toList();
+      if (results.isEmpty) {
+        // User pressed start+stop with no sound — give minimal credit for trying.
+        accuracy = state.detectionsCaptured > 0 ? 0.70 : 0.0;
+      } else {
+        accuracy = _amplitudeFallback(results);
+      }
+    }
+
+    final clamped = accuracy.clamp(0.0, 1.0);
+    final startedAt = _exerciseStartedAt ?? DateTime.now();
+    final duration = DateTime.now().difference(startedAt).inSeconds;
+
+    final attempt = ExerciseAttempt(
+      exerciseIndex: state.currentExerciseIndex,
+      exerciseId: exercise?.id ?? 'manual-${state.currentExerciseIndex}',
+      accuracy: clamped,
+      durationSeconds: duration,
+      timestamp: DateTime.now(),
+    );
+    final attempts = [...state.attempts, attempt];
+    final best =
+        attempts.fold<double>(0, (m, a) => a.accuracy > m ? a.accuracy : m);
+    final avg = attempts.fold<double>(0, (s, a) => s + a.accuracy) /
+        attempts.length;
+
+    state = state.copyWith(
+      attempts: attempts,
+      currentAccuracy: clamped,
+      bestAccuracy: best,
+      avgAccuracy: avg,
+    );
   }
 
   /// Advances to the next exercise.

@@ -6,6 +6,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../app/theme/colors.dart';
 import '../../core/curriculum/curriculum.dart';
+import '../../core/music_theory/note.dart';
 import '../../core/curriculum/hand_isolation.dart';
 import '../../core/curriculum/pedagogy/learning_rules.dart';
 import '../../core/models/lesson.dart';
@@ -264,8 +265,13 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                       detectionsRequired:
                           state.currentExercise?.repetitionsRequired ?? 4,
                       livePitch: state.livePitch,
+                      targetNote:
+                          state.currentExercise?.targetNoteOrChord ?? 'E4',
                       onStartListening: () => controller.startListening(),
-                      onStopListening: () => controller.stopListening(),
+                      onStopListening: () {
+                        controller.submitManualAttempt();
+                        controller.stopListening();
+                      },
                     ),
                   if (_isExerciseComplete) _AccuracyResult(accuracy: accuracy),
                 ],
@@ -296,6 +302,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
                         : isLastStep
                             ? () {
                                 if (state.isListening) {
+                                  controller.submitManualAttempt();
                                   controller.stopListening();
                                 } else {
                                   controller.startListening();
@@ -449,6 +456,7 @@ class _ExerciseArea extends StatelessWidget {
   final int detectionsCaptured;
   final int detectionsRequired;
   final dynamic livePitch;
+  final String targetNote;
   final VoidCallback onStartListening;
   final VoidCallback onStopListening;
 
@@ -457,6 +465,7 @@ class _ExerciseArea extends StatelessWidget {
     required this.detectionsCaptured,
     required this.detectionsRequired,
     required this.livePitch,
+    required this.targetNote,
     required this.onStartListening,
     required this.onStopListening,
   });
@@ -501,9 +510,12 @@ class _ExerciseArea extends StatelessWidget {
               label: const Text('Aufnahme starten'),
             ),
             const SizedBox(height: 12),
-            const ReferenceAudioButton(note: 'E4'),
+            ReferenceAudioButton(note: targetNote),
           ] else ...[
-            RealTimeFeedbackWidget(result: livePitch),
+            RealTimeFeedbackWidget(
+              result: livePitch,
+              targetNote: _parseNote(targetNote),
+            ),
             const SizedBox(height: 16),
             Text(
               'Treffer: $detectionsCaptured / $detectionsRequired',
@@ -530,6 +542,16 @@ class _ExerciseArea extends StatelessWidget {
       ),
     );
   }
+}
+
+Note? _parseNote(String s) {
+  if (s.isEmpty) return null;
+  final match = RegExp(r'^([A-Ga-g][#b]?)(\d+)$').firstMatch(s.trim());
+  if (match == null) return null;
+  return Note(
+    name: match.group(1)!.toUpperCase(),
+    octave: int.tryParse(match.group(2)!) ?? 4,
+  );
 }
 
 class _AccuracyResult extends StatelessWidget {
