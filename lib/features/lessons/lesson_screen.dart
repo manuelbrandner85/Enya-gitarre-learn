@@ -61,12 +61,18 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           );
     });
 
-    final pedagogy = LearningRules.lessonPedagogy[widget.lessonId];
-    if (pedagogy?.xmariSetup != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _xmariSetupShown = false);
-      });
-    }
+    // Pädagogik-Info immer verfügbar (nutzt _getPedagogy mit Fallback-Kette).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _xmariSetupShown = false);
+    });
+  }
+
+  /// Pädagogik-Info zur aktuellen Lektion mit Fallback-Kette:
+  /// 1. (zukünftig) `_lesson.pedagogy` direkt im Lesson-Modell
+  /// 2. `LearningRules.lessonPedagogy[id]`
+  /// 3. Default mit `XmariSetup.beginnerDefault`
+  LessonPedagogyInfo _getPedagogy() {
+    return LearningRules.lookupOrDefault(widget.lessonId);
   }
 
   @override
@@ -164,8 +170,7 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
             icon: const Icon(Icons.help_outline, size: 20),
             tooltip: 'So geht\'s',
             onPressed: () {
-              final tip = LearningRules.lessonPedagogy[widget.lessonId]
-                  ?.xmariSetup?.explanation;
+              final tip = _getPedagogy().xmariSetup.explanation;
               ShowMeHowOverlay.show(
                 context,
                 instruction: steps.isNotEmpty
@@ -329,14 +334,13 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
           ),  // closes Column
           if (!_xmariSetupShown)
             Builder(builder: (ctx) {
-              final pedagogy =
-                  LearningRules.lessonPedagogy[widget.lessonId];
-              if (pedagogy?.xmariSetup == null) return const SizedBox.shrink();
+              // Jede Lektion hat dank Fallback-Kette ein Setup.
+              final pedagogy = _getPedagogy();
               return Container(
                 color: Colors.black54,
                 child: Center(
                   child: XmariSetupCard(
-                    setup: pedagogy!.xmariSetup,
+                    setup: pedagogy.xmariSetup,
                     onDismiss: () => setState(() => _xmariSetupShown = true),
                   ),
                 ),
