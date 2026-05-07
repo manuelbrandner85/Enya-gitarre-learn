@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:enya_gitarre_learn/app/theme/colors.dart';
 import 'package:enya_gitarre_learn/core/music_theory/chord_transposer.dart';
@@ -221,7 +222,7 @@ class _SongChordSheetScreenState extends ConsumerState<SongChordSheetScreen> {
       appBar: _buildAppBar(context),
       body: Column(
         children: [
-          _SongInfoBar(song: _song, capo: _capo),
+          _SongInfoBar(song: _song, capo: _capo, transposeSteps: _transposeSteps),
           Expanded(
             child: SingleChildScrollView(
               controller: _scroll,
@@ -246,9 +247,7 @@ class _SongChordSheetScreenState extends ConsumerState<SongChordSheetScreen> {
               if (_autoScroll) _startScroll();
             },
             onPracticeTap: () =>
-                Navigator.of(context).pushReplacementNamed(
-              '/home/songbuch/${widget.songId}',
-            ),
+                context.push('/home/songbuch/${widget.songId}'),
           ),
         ],
       ),
@@ -291,41 +290,52 @@ class _SongChordSheetScreenState extends ConsumerState<SongChordSheetScreen> {
         ],
       ),
       actions: [
-        // Capo button
-        IconButton(
-          icon: const Icon(Icons.music_note, color: AppColors.textSecondary),
-          tooltip: 'Capo',
+        // Capo button with value label
+        TextButton.icon(
+          icon: const Icon(Icons.music_note, size: 16),
+          label: Text(_capo == 0 ? 'Capo' : 'Capo $_capo'),
+          style: TextButton.styleFrom(
+            foregroundColor: _capo > 0 ? AppColors.primary : AppColors.textSecondary,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
           onPressed: () => _showCapoDialog(context),
         ),
-        // Transpose down
-        IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down),
-          tooltip: 'Runter transponieren',
-          onPressed: _transposeSteps > -6
-              ? () => setState(() => _transposeSteps--)
-              : null,
-        ),
-        // Transpose indicator
-        Text(
-          transposeLabel,
-          style: const TextStyle(
-            color: AppColors.primary,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
-        // Transpose up
-        IconButton(
-          icon: const Icon(Icons.keyboard_arrow_up),
-          tooltip: 'Hoch transponieren',
-          onPressed: _transposeSteps < 6
-              ? () => setState(() => _transposeSteps++)
-              : null,
+        // Transpose controls
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove, size: 18),
+              tooltip: 'Tiefer',
+              onPressed: _transposeSteps > -6 ? () => setState(() => _transposeSteps--) : null,
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(),
+            ),
+            SizedBox(
+              width: 32,
+              child: Text(
+                transposeLabel,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: _transposeSteps != 0 ? AppColors.primary : AppColors.textSecondary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add, size: 18),
+              tooltip: 'Höher',
+              onPressed: _transposeSteps < 6 ? () => setState(() => _transposeSteps++) : null,
+              padding: const EdgeInsets.all(4),
+              constraints: const BoxConstraints(),
+            ),
+          ],
         ),
         // Stage mode
         IconButton(
-          icon: const Icon(Icons.fullscreen),
-          tooltip: 'Stage-Modus',
+          icon: const Icon(Icons.fullscreen, size: 22),
+          tooltip: 'Bühnen-Modus',
           onPressed: _toggleStageMode,
         ),
       ],
@@ -463,9 +473,7 @@ class _SongChordSheetScreenState extends ConsumerState<SongChordSheetScreen> {
                   if (_autoScroll) _startScroll();
                 },
                 onPracticeTap: () =>
-                    Navigator.of(context).pushReplacementNamed(
-                  '/home/songbuch/${widget.songId}',
-                ),
+                    context.push('/home/songbuch/${widget.songId}'),
               ),
             ],
           ),
@@ -503,8 +511,9 @@ class _SongChordSheetScreenState extends ConsumerState<SongChordSheetScreen> {
 class _SongInfoBar extends StatelessWidget {
   final SongData song;
   final int capo;
+  final int transposeSteps;
 
-  const _SongInfoBar({required this.song, required this.capo});
+  const _SongInfoBar({required this.song, required this.capo, required this.transposeSteps});
 
   @override
   Widget build(BuildContext context) {
@@ -523,6 +532,11 @@ class _SongInfoBar extends StatelessWidget {
             if (song.tuning != 'Standard')
               _InfoChip(label: song.tuning),
             if (capo > 0) _InfoChip(label: 'Capo $capo', highlight: true),
+            if (transposeSteps != 0)
+              _InfoChip(
+                label: transposeSteps > 0 ? '+$transposeSteps Halbton' : '$transposeSteps Halbton',
+                highlight: true,
+              ),
           ]
               .expand((w) => [w, const SizedBox(width: 8)])
               .toList()
@@ -739,12 +753,19 @@ class _BottomToolbar extends StatelessWidget {
               ),
             ] else
               const Spacer(),
-            // Practice mode button
-            IconButton(
-              icon: const Icon(Icons.school, color: AppColors.textSecondary),
-              tooltip: 'Üben',
+            // Practice mode button — labeled for clarity
+            TextButton.icon(
               onPressed: onPracticeTap,
+              icon: const Icon(Icons.mic, size: 16),
+              label: const Text('Üben', style: TextStyle(fontWeight: FontWeight.w600)),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
             ),
+            const SizedBox(width: 4),
           ],
         ),
       ),
