@@ -34,5 +34,38 @@
   "@achievementUnlocked": {
     "placeholders": { "title": { "type": "String" } }
   },
-  "viewAction": "View"
+  "viewAction": "View",
+  "fretboardStringMnemonic": "Elephants And Donkeys Grow Big Ears",
+  "fretboardBarreTip": "Press just behind the fret bar, not on it.",
+  "fretboardZoomTitle": "String {string}, Fret {fret}",
+  "@fretboardZoomTitle": {
+    "placeholders": { "string": { "type": "int" }, "fret": { "type": "int" } }
+  },
+  "fretboardQuizQuestion": "Which note is here?",
+  "fretboardQuizCorrect": "Correct! {note}",
+  "@fretboardQuizCorrect": {
+    "placeholders": { "note": { "type": "String" } }
+  },
+  "fretboardQuizWrong": "Wrong – it was {note}",
+  "@fretboardQuizWrong": {
+    "placeholders": { "note": { "type": "String" } }
+  },
+  "fretboardStepAnimationReplay": "Replay",
+  "fretboardStepOf": "Finger {current} of {total}",
+  "@fretboardStepOf": {
+    "placeholders": { "current": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "strumHandDown": "Down",
+  "strumHandUp": "Up",
+  "strumHandMuted": "Muted",
+  "fretboardZoomClose": "Close",
+  "settingsLeftHanded": "Left-handed mode",
+  "settingsLeftHandedSubtitle": "Show fretboard mirrored",
+  "chordTransitionPlay": "Play",
+  "chordTransitionStop": "Stop",
+  "fretboardListeningLabel": "Listening…",
+  "fretboardFingerIndex": "Index finger",
+  "fretboardFingerMiddle": "Middle finger",
+  "fretboardFingerRing": "Ring finger",
+  "fretboardFingerPinky": "Pinky"
 }
