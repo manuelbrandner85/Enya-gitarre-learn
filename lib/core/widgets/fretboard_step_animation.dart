@@ -257,9 +257,6 @@ class _FretboardStepAnimationState extends State<FretboardStepAnimation>
     );
   }
 
-  /// Baut das Griffbrett-Widget mit überlagerten TweenAnimationBuilder-Ebenen.
-  Widget build_unused_fretboard_overlay() => const SizedBox.shrink();
-
   Widget _buildFretboard() {
     // Wir stapeln FretboardWidget + animierte Einblendeebene übereinander.
     // Da FretboardWidget intern zeichnet, übergeben wir _visiblePositions direkt.
