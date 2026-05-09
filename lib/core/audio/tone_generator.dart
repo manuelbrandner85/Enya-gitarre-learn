@@ -67,9 +67,8 @@ class ToneGenerator {
       final freq = _semitoneFreq(semitones[n]);
       for (int i = 0; i < noteSamples; i++) {
         final env = _env(i, noteSamples);
-        final val =
-            (_amplitude * env * sin(2 * pi * freq * i / _sampleRate) * 32767)
-                .round();
+        final sample = _guitarSample(freq, i) / _guitarNorm;
+        final val = (_amplitude * env * sample * 32767).round();
         data[offset++] = val.clamp(-32768, 32767);
       }
       if (n < semitones.length - 1) {
@@ -94,7 +93,8 @@ class ToneGenerator {
       double sum = 0;
       for (final s in semitones) {
         final freq = _semitoneFreq(s);
-        sum += sin(2 * pi * freq * i / _sampleRate);
+        // Gitarren-Obertöne pro Saite des Akkords
+        sum += _guitarSample(freq, i) / _guitarNorm;
       }
       final val = (_amplitude * env * sum / n * 32767).round();
       data[i] = val.clamp(-32768, 32767);
@@ -120,11 +120,29 @@ class ToneGenerator {
     return map[typeName] ?? [0, 4, 7];
   }
 
+  /// Gitarren-ähnliche additive Synthese: Grundton + Obertöne in typischen Amplitudenverhältnissen.
+  /// Klingt wesentlich natürlicher als ein reiner Sinus.
+  static double _guitarSample(double freq, int sampleIndex) {
+    final t = sampleIndex / _sampleRate;
+    // Obertöne mit typischen Gitarren-Amplitudenverhältnissen (Saiteninstrument)
+    return 1.00 * sin(2 * pi * freq * 1 * t) +
+           0.50 * sin(2 * pi * freq * 2 * t) +
+           0.25 * sin(2 * pi * freq * 3 * t) +
+           0.12 * sin(2 * pi * freq * 4 * t) +
+           0.06 * sin(2 * pi * freq * 5 * t) +
+           0.03 * sin(2 * pi * freq * 6 * t);
+  }
+
+  /// Normalisierungsfaktor für die Obertöne (Summe der Amplituden)
+  static const _guitarNorm = 1.00 + 0.50 + 0.25 + 0.12 + 0.06 + 0.03;
+
   static double _env(int i, int total) {
     final t = i / total;
-    if (t < 0.05) return t / 0.05;
-    if (t > 0.88) return (1.0 - t) / 0.12;
-    return 1.0;
+    // Gitarren-typisches ADSR: schneller Attack, langsamer Decay/Release
+    if (t < 0.01) return t / 0.01; // Attack 10ms
+    if (t < 0.15) return 1.0 - (t - 0.01) * 0.3 / 0.14; // leichter Decay
+    if (t > 0.85) return (1.0 - t) / 0.15 * 0.7; // Release
+    return 0.7; // Sustain
   }
 
   static Future<String> _saveWav(Int16List data) async {

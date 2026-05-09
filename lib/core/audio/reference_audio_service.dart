@@ -65,7 +65,7 @@ class ReferenceAudioService {
     // 2) Fallback: synthetische Sinuswelle
     final semitone = _noteSemitones[noteName];
     if (semitone == null) {
-      debugPrint('ReferenceAudioService: unbekannte Note $noteName');
+      if (kDebugMode) debugPrint('ReferenceAudioService: unbekannte Note $noteName');
       return;
     }
     try {
@@ -77,7 +77,7 @@ class ReferenceAudioService {
       await _player.setFilePath(path);
       await _player.play();
     } catch (e) {
-      debugPrint('ReferenceAudioService.playNote error: $e');
+      if (kDebugMode) debugPrint('ReferenceAudioService.playNote error: $e');
     }
   }
 
@@ -89,7 +89,7 @@ class ReferenceAudioService {
     // 2) Fallback: synthetische Akkord-Synthese
     final semitones = _chordSemitones[chordName];
     if (semitones == null) {
-      debugPrint('ReferenceAudioService: unbekannter Akkord $chordName');
+      if (kDebugMode) debugPrint('ReferenceAudioService: unbekannter Akkord $chordName');
       return;
     }
     try {
@@ -97,7 +97,7 @@ class ReferenceAudioService {
       await _player.setFilePath(path);
       await _player.play();
     } catch (e) {
-      debugPrint('ReferenceAudioService.playChord error: $e');
+      if (kDebugMode) debugPrint('ReferenceAudioService.playChord error: $e');
     }
   }
 

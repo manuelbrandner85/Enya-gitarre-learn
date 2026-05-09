@@ -38,6 +38,8 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
   int? _autoDetectedString;
   final Set<int> _tunedStrings = {};
   DateTime? _lastStringDetect;
+  // M1: Hinweis wenn Frequenz erkannt aber außerhalb Saiten-Bereich
+  String? _outOfRangeMessage;
 
   StreamSubscription<TunerReading>? _readingSub;
 
@@ -62,8 +64,19 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
       if (!mounted) return;
       if (reading.amplitude > 0.01 && reading.frequency > 0) {
         final selected = _findClosestString(reading.frequency, _tuning);
+        if (selected == null) {
+          // Frequenz erkannt aber keine Saite passt → Hinweis anzeigen
+          setState(() {
+            _outOfRangeMessage = reading.frequency < 70
+                ? 'Zu tief – stimme höher'
+                : reading.frequency > 420
+                    ? 'Zu hoch – stimme tiefer'
+                    : null;
+          });
+          return;
+        }
         if (selected != null) {
-          setState(() => _autoDetectedString = selected);
+          setState(() { _autoDetectedString = selected; _outOfRangeMessage = null; });
           // Gestimmt (±5 Cent) für >2 Sekunden?
           if (reading.centsOff.abs() <= 5) {
             final now = DateTime.now();
@@ -255,8 +268,21 @@ class _TunerScreenState extends ConsumerState<TunerScreen> {
 
         const SizedBox(height: 16),
 
+        // Außerhalb-Bereich-Hinweis (M1)
+        if (_isActive && _outOfRangeMessage != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              _outOfRangeMessage!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.warning,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+
         // Cents display
-        if (_isActive && reading.amplitude > 0.01)
+        if (_isActive && reading.amplitude > 0.01 && _outOfRangeMessage == null)
           Text(
             reading.isInTune
                 ? '✓ Gestimmt'
