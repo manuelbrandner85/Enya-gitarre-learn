@@ -74,6 +74,8 @@ class _JamScreenState extends ConsumerState<JamScreen> {
   int _bpm = 90;
   bool _isPlaying = false;
   bool _isLoadingTrack = false;
+  // Metronom-Fallback, wenn der Player keinen Ton erzeugt
+  bool _useClickFallback = false;
   double _trackVolume = 0.6;
   final AudioPlayer _player = AudioPlayer();
   Timer? _beatTimer;
@@ -139,10 +141,28 @@ class _JamScreenState extends ConsumerState<JamScreen> {
       await _player.setVolume(_trackVolume);
       await _player.setFilePath(path);
       await _player.play();
+
+      // Sicherheitscheck: spielt der Player tatsächlich?
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!_player.playing && mounted) {
+        // Metronom-Fallback mit echtem Click-Sound
+        _useClickFallback = true;
+      }
     } catch (e) {
-      // Bei Fehler: Track nicht starten, aber Beat-Timer trotzdem laufen lassen
-      // damit die visuelle Anzeige funktioniert
-      debugPrint('JamScreen: Backing-Track-Fehler: $e');
+      // Bei Fehler: Fehlermeldung anzeigen und Beat-Timer NICHT starten
+      if (mounted) {
+        setState(() => _isLoadingTrack = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Backing-Track konnte nicht geladen werden: ${e.toString().split(':').first}',
+            ),
+            action: SnackBarAction(label: 'OK', onPressed: () {}),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      return; // Beat-Timer NICHT ohne Audio starten
     } finally {
       if (mounted) setState(() => _isLoadingTrack = false);
     }
