@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../audio/hands_free_service.dart';
 
+// ignore: unused_import — für HandsFreeMode-Referenz in _ModeTile
+
 final handsFreeServiceProvider = Provider<HandsFreeService>((ref) {
   final svc = HandsFreeService();
   ref.onDispose(() => svc.dispose());
