@@ -113,6 +113,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     );
     if (title == null || title.isEmpty || _filePath == null) return;
 
+    // Pfad und Dauer sichern, bevor der State zurückgesetzt wird
+    final filePath = _filePath!;
+    final durationSeconds = _elapsed.inSeconds;
+
     final db = ref.read(databaseProvider);
     final prefs = ref.read(sharedPreferencesProvider);
     final userId = prefs.getString(AppConstants.prefKeyUserId) ?? 'guest';
@@ -121,8 +125,8 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         id: const Uuid().v4(),
         userId: userId,
         sessionId: const Uuid().v4(),
-        filePath: _filePath!,
-        durationSeconds: Value(_elapsed.inSeconds),
+        filePath: filePath,
+        durationSeconds: Value(durationSeconds),
         title: Value(title),
         createdAt: DateTime.now(),
       ),
@@ -142,15 +146,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     }
 
     // Upload zu Supabase (best-effort, blockiert niemals lokale Speicherung).
-    final filePath = _filePath ?? filePath_local;
-    final durationSeconds = _elapsed.inSeconds;
     _pendingUploadTitle = title;
     _pendingUploadDuration = durationSeconds;
     await _uploadToSupabase(filePath, title, durationSeconds);
   }
-
-  // Speichert den Datei-Pfad vor dem Zurücksetzen für den Upload.
-  String get filePath_local => _filePath ?? '';
 
   /// Lädt die Aufnahme zu Supabase hoch und zeigt Fehler-UI bei Misserfolg.
   Future<void> _uploadToSupabase(
@@ -326,6 +325,55 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                   ),
                 ],
               ),
+            // Upload-Fortschrittsanzeige
+            if (_isUploading) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+              const SizedBox(height: 4),
+              const Text(
+                'Wird hochgeladen…',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+            // Upload-Fehler-Karte mit Wiederholen-Button
+            if (_uploadError != null && !_isUploading) ...[
+              const SizedBox(height: 12),
+              Card(
+                color: AppColors.error.withOpacity(0.15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(color: AppColors.error.withOpacity(0.5)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.cloud_off,
+                          color: AppColors.error, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _uploadError!,
+                          style: const TextStyle(
+                            color: AppColors.error,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _retryUpload,
+                        child: const Text('Wiederholen'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
           ],
         ),
