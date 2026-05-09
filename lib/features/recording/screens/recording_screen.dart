@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -29,6 +30,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   String? _filePath;
   Duration _elapsed = Duration.zero;
   Timer? _timer;
+
+  // Upload-Status und Fehlerzustand
+  bool _isUploading = false;
+  String? _uploadError;
+  String? _pendingUploadTitle;
+  int _pendingUploadDuration = 0;
 
   @override
   void initState() {
@@ -121,23 +128,7 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
       ),
     );
 
-    // Upload to Supabase Storage (best-effort, never blocks local save).
-    final filePath = _filePath!;
-    final durationSeconds = _elapsed.inSeconds;
-    try {
-      final sync = ref.read(supabaseSyncProvider);
-      final filename =
-          'recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      await sync.uploadRecording(
-        localPath: filePath,
-        filename: filename,
-        title: title,
-        durationSeconds: durationSeconds,
-      );
-    } catch (e) {
-      debugPrint('RecordingScreen: Supabase upload failed: $e');
-    }
-
+    // Lokal gespeichert – UI-Zustand zurücksetzen
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aufnahme gespeichert')),
@@ -146,8 +137,71 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         _hasRecording = false;
         _filePath = null;
         _elapsed = Duration.zero;
+        _uploadError = null;
       });
     }
+
+    // Upload zu Supabase (best-effort, blockiert niemals lokale Speicherung).
+    final filePath = _filePath ?? filePath_local;
+    final durationSeconds = _elapsed.inSeconds;
+    _pendingUploadTitle = title;
+    _pendingUploadDuration = durationSeconds;
+    await _uploadToSupabase(filePath, title, durationSeconds);
+  }
+
+  // Speichert den Datei-Pfad vor dem Zurücksetzen für den Upload.
+  String get filePath_local => _filePath ?? '';
+
+  /// Lädt die Aufnahme zu Supabase hoch und zeigt Fehler-UI bei Misserfolg.
+  Future<void> _uploadToSupabase(
+      String filePath, String title, int durationSeconds) async {
+    if (!mounted) return;
+    setState(() {
+      _isUploading = true;
+      _uploadError = null;
+    });
+    try {
+      final sync = ref.read(supabaseSyncProvider);
+      final filename = 'recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await sync.uploadRecording(
+        localPath: filePath,
+        filename: filename,
+        title: title,
+        durationSeconds: durationSeconds,
+      );
+      if (mounted) setState(() => _isUploading = false);
+    } catch (e) {
+      if (kDebugMode) debugPrint('RecordingScreen: Supabase-Upload fehlgeschlagen: $e');
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadError = 'Upload fehlgeschlagen. Prüfe deine Verbindung.';
+        });
+      }
+    }
+  }
+
+  /// Wiederholt den Supabase-Upload nach einem Fehler.
+  Future<void> _retryUpload() async {
+    final title = _pendingUploadTitle;
+    if (title == null || title.isEmpty) return;
+    // Letzten lokalen Pfad erneut hochladen — Upload-Retry benötigt den Pfad
+    // aus der letzten gespeicherten Aufnahme. Da _filePath nach dem Speichern
+    // geleert wurde, suchen wir das neueste m4a-File im Dokumentenverzeichnis.
+    final dir = await getApplicationDocumentsDirectory();
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.m4a'))
+        .toList()
+      ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    if (files.isEmpty) {
+      if (mounted) {
+        setState(() => _uploadError = 'Aufnahme-Datei nicht gefunden.');
+      }
+      return;
+    }
+    await _uploadToSupabase(files.first.path, title, _pendingUploadDuration);
   }
 
   @override
