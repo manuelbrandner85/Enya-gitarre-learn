@@ -79,41 +79,55 @@ class FretboardWidget extends StatefulWidget {
 
   // ────────────────────── Statische Hilfs­methoden ──────────────────────────
 
+  /// Berechnet alle Griffbrettpositionne für einen Notennamen dynamisch
+  /// aus der Standard-Stimmung (E-A-D-G-H-e).
   static List<FretPosition> positionsForNote(String noteName) {
-    switch (noteName) {
-      case 'E2':
-        return [const FretPosition(string: 6, fret: 0)];
-      case 'F2':
-        return [const FretPosition(string: 6, fret: 1)];
-      case 'G2':
-        return [const FretPosition(string: 6, fret: 3)];
-      case 'A2':
-        return [const FretPosition(string: 5, fret: 0)];
-      case 'B2':
-        return [const FretPosition(string: 5, fret: 2)];
-      case 'C3':
-        return [const FretPosition(string: 5, fret: 3)];
-      case 'D3':
-        return [const FretPosition(string: 4, fret: 0)];
-      case 'E3':
-        return [const FretPosition(string: 4, fret: 2)];
-      case 'F3':
-        return [const FretPosition(string: 4, fret: 3)];
-      case 'G3':
-        return [const FretPosition(string: 3, fret: 0)];
-      case 'A3':
-        return [const FretPosition(string: 3, fret: 2)];
-      case 'B3':
-        return [const FretPosition(string: 2, fret: 0)];
-      case 'C4':
-        return [const FretPosition(string: 2, fret: 1, finger: 1)];
-      case 'D4':
-        return [const FretPosition(string: 2, fret: 3, finger: 3)];
-      case 'E4':
-        return [const FretPosition(string: 1, fret: 0)];
-      default:
-        return [];
+    // Standard-Stimmung: MIDI-Noten der offenen Saiten (Index 0=Saite 6=tief, Index 5=Saite 1=hoch)
+    const openStringMidi = [40, 45, 50, 55, 59, 64]; // E2, A2, D3, G3, B3, E4
+
+    // Notenname → Chroma-Index (0=C, 1=C#/Db, ..., 11=B)
+    const noteToChroma = {
+      'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3,
+      'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8,
+      'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11,
+    };
+
+    // Notenname mit Oktave parsen (z.B. "F#3", "Bb4", "E2")
+    final match = RegExp(r'^([A-Ga-g][#b]?)(\d+)$').firstMatch(noteName);
+    if (match == null) return [];
+
+    final name = match.group(1)!;
+    final octave = int.parse(match.group(2)!);
+    final chroma = noteToChroma[name];
+    if (chroma == null) return [];
+
+    // MIDI-Nummer der Ziel-Note berechnen (C-1=0, C0=12, C1=24, ...)
+    final targetMidi = (octave + 1) * 12 + chroma;
+
+    final positions = <FretPosition>[];
+    for (int s = 0; s < 6; s++) {
+      final fret = targetMidi - openStringMidi[s];
+      if (fret >= 0 && fret <= 22) {
+        positions.add(FretPosition(
+          string: 6 - s, // Saite 6=tiefste (Index 0), Saite 1=höchste (Index 5)
+          fret: fret,
+        ));
+      }
     }
+    return positions;
+  }
+
+  /// Gibt die einfachste (niedrigste) Griffposition zurück.
+  /// Bei gleichem Bund wird die tiefere Saite bevorzugt.
+  static FretPosition? lowestPositionForNote(String noteName) {
+    final positions = positionsForNote(noteName);
+    if (positions.isEmpty) return null;
+    positions.sort((a, b) {
+      final fretDiff = a.fret.compareTo(b.fret);
+      if (fretDiff != 0) return fretDiff;
+      return b.string.compareTo(a.string); // Bevorzuge tiefere Saite bei gleichem Bund
+    });
+    return positions.first;
   }
 
   static List<FretPosition> positionsForChord(String chordName) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../app/theme/colors.dart';
@@ -265,6 +266,24 @@ class _LessonScreenState extends ConsumerState<LessonScreen> {
     final lesson = _lesson!;
     final state = ref.watch(lessonControllerProvider(_lessonKey));
     final controller = ref.read(lessonControllerProvider(_lessonKey).notifier);
+
+    // Mikrofon-Fehler anzeigen
+    final pitchError = state.pitchError;
+    if (pitchError != null && pitchError.contains('Berechtigung')) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Mikrofon-Zugriff erforderlich. Bitte in Einstellungen erlauben.'),
+            action: SnackBarAction(
+              label: 'Einstellungen',
+              onPressed: () => openAppSettings(),
+            ),
+            duration: const Duration(seconds: 6),
+          ),
+        );
+      });
+    }
 
     // Auto-complete the exercise UI when the controller has captured enough.
     if (state.attempts.isNotEmpty &&

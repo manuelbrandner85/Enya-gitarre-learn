@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -29,6 +30,12 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
   String? _filePath;
   Duration _elapsed = Duration.zero;
   Timer? _timer;
+
+  // Upload-Status und Fehlerzustand
+  bool _isUploading = false;
+  String? _uploadError;
+  String? _pendingUploadTitle;
+  int _pendingUploadDuration = 0;
 
   @override
   void initState() {
@@ -106,6 +113,10 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
     );
     if (title == null || title.isEmpty || _filePath == null) return;
 
+    // Pfad und Dauer sichern, bevor der State zurückgesetzt wird
+    final filePath = _filePath!;
+    final durationSeconds = _elapsed.inSeconds;
+
     final db = ref.read(databaseProvider);
     final prefs = ref.read(sharedPreferencesProvider);
     final userId = prefs.getString(AppConstants.prefKeyUserId) ?? 'guest';
@@ -114,30 +125,14 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         id: const Uuid().v4(),
         userId: userId,
         sessionId: const Uuid().v4(),
-        filePath: _filePath!,
-        durationSeconds: Value(_elapsed.inSeconds),
+        filePath: filePath,
+        durationSeconds: Value(durationSeconds),
         title: Value(title),
         createdAt: DateTime.now(),
       ),
     );
 
-    // Upload to Supabase Storage (best-effort, never blocks local save).
-    final filePath = _filePath!;
-    final durationSeconds = _elapsed.inSeconds;
-    try {
-      final sync = ref.read(supabaseSyncProvider);
-      final filename =
-          'recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      await sync.uploadRecording(
-        localPath: filePath,
-        filename: filename,
-        title: title,
-        durationSeconds: durationSeconds,
-      );
-    } catch (e) {
-      debugPrint('RecordingScreen: Supabase upload failed: $e');
-    }
-
+    // Lokal gespeichert – UI-Zustand zurücksetzen
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Aufnahme gespeichert')),
@@ -146,8 +141,66 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
         _hasRecording = false;
         _filePath = null;
         _elapsed = Duration.zero;
+        _uploadError = null;
       });
     }
+
+    // Upload zu Supabase (best-effort, blockiert niemals lokale Speicherung).
+    _pendingUploadTitle = title;
+    _pendingUploadDuration = durationSeconds;
+    await _uploadToSupabase(filePath, title, durationSeconds);
+  }
+
+  /// Lädt die Aufnahme zu Supabase hoch und zeigt Fehler-UI bei Misserfolg.
+  Future<void> _uploadToSupabase(
+      String filePath, String title, int durationSeconds) async {
+    if (!mounted) return;
+    setState(() {
+      _isUploading = true;
+      _uploadError = null;
+    });
+    try {
+      final sync = ref.read(supabaseSyncProvider);
+      final filename = 'recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await sync.uploadRecording(
+        localPath: filePath,
+        filename: filename,
+        title: title,
+        durationSeconds: durationSeconds,
+      );
+      if (mounted) setState(() => _isUploading = false);
+    } catch (e) {
+      if (kDebugMode) debugPrint('RecordingScreen: Supabase-Upload fehlgeschlagen: $e');
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _uploadError = 'Upload fehlgeschlagen. Prüfe deine Verbindung.';
+        });
+      }
+    }
+  }
+
+  /// Wiederholt den Supabase-Upload nach einem Fehler.
+  Future<void> _retryUpload() async {
+    final title = _pendingUploadTitle;
+    if (title == null || title.isEmpty) return;
+    // Letzten lokalen Pfad erneut hochladen — Upload-Retry benötigt den Pfad
+    // aus der letzten gespeicherten Aufnahme. Da _filePath nach dem Speichern
+    // geleert wurde, suchen wir das neueste m4a-File im Dokumentenverzeichnis.
+    final dir = await getApplicationDocumentsDirectory();
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.m4a'))
+        .toList()
+      ..sort((a, b) => b.statSync().modified.compareTo(a.statSync().modified));
+    if (files.isEmpty) {
+      if (mounted) {
+        setState(() => _uploadError = 'Aufnahme-Datei nicht gefunden.');
+      }
+      return;
+    }
+    await _uploadToSupabase(files.first.path, title, _pendingUploadDuration);
   }
 
   @override
@@ -272,6 +325,55 @@ class _RecordingScreenState extends ConsumerState<RecordingScreen> {
                   ),
                 ],
               ),
+            // Upload-Fortschrittsanzeige
+            if (_isUploading) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+              const SizedBox(height: 4),
+              const Text(
+                'Wird hochgeladen…',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+            // Upload-Fehler-Karte mit Wiederholen-Button
+            if (_uploadError != null && !_isUploading) ...[
+              const SizedBox(height: 12),
+              Card(
+                color: AppColors.error.withOpacity(0.15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  side: BorderSide(color: AppColors.error.withOpacity(0.5)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.cloud_off,
+                          color: AppColors.error, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _uploadError!,
+                          style: const TextStyle(
+                            color: AppColors.error,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _retryUpload,
+                        child: const Text('Wiederholen'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
           ],
         ),

@@ -65,6 +65,8 @@ class LessonState {
   final PitchResult? livePitch;
   final int detectionsCaptured; // how many on-pitch detections so far
   final bool isListening;
+  // Fehlermeldung bei Pitch-/Mikrofon-Problemen; null wenn kein Fehler.
+  final String? pitchError;
 
   const LessonState({
     this.lesson,
@@ -78,6 +80,7 @@ class LessonState {
     this.livePitch,
     this.detectionsCaptured = 0,
     this.isListening = false,
+    this.pitchError,
   });
 
   Exercise? get currentExercise {
@@ -106,6 +109,8 @@ class LessonState {
     bool clearLivePitch = false,
     int? detectionsCaptured,
     bool? isListening,
+    String? pitchError,
+    bool clearPitchError = false,
   }) {
     return LessonState(
       lesson: lesson ?? this.lesson,
@@ -119,6 +124,7 @@ class LessonState {
       livePitch: clearLivePitch ? null : (livePitch ?? this.livePitch),
       detectionsCaptured: detectionsCaptured ?? this.detectionsCaptured,
       isListening: isListening ?? this.isListening,
+      pitchError: clearPitchError ? null : (pitchError ?? this.pitchError),
     );
   }
 }
@@ -168,13 +174,20 @@ class LessonController extends StateNotifier<LessonState> {
     );
     _exerciseStartedAt = DateTime.now();
 
-    _pitchSubscription = _pitchDetector.pitchStream.listen((result) {
-      if (!result.isValid) {
-        state = state.copyWith(clearLivePitch: true);
-        return;
-      }
-      _onPitch(result);
-    });
+    _pitchSubscription = _pitchDetector.pitchStream.listen(
+      (result) {
+        if (!result.isValid) {
+          state = state.copyWith(clearLivePitch: true);
+          return;
+        }
+        _onPitch(result);
+      },
+      onError: (Object error) {
+        if (kDebugMode) debugPrint('LessonController: Pitch-Fehler: $error');
+        // Fehler in State weitergeben — UI kann Meldung anzeigen
+        state = state.copyWith(isListening: false, pitchError: error.toString());
+      },
+    );
   }
 
   /// Starts microphone capture and pitch detection. Safe to call repeatedly.
@@ -257,7 +270,9 @@ class LessonController extends StateNotifier<LessonState> {
     }
 
     if (targetSpec.isEmpty || targetSpec == 'chromatic') {
-      return _amplitudeFallback(results);
+      // Freies Spielen — Amplitude als Proxy reicht hier
+      final avg = results.fold<double>(0.0, (s, r) => s + r.amplitude) / results.length;
+      return (avg * 3.0).clamp(0.0, 1.0);
     }
 
     // Single note (or note sequence — score over all targets).
@@ -279,12 +294,9 @@ class LessonController extends StateNotifier<LessonState> {
     return (avg / 100.0).clamp(0.0, 1.0);
   }
 
-  double _amplitudeFallback(List<PitchResult> results) {
-    // "Did the user play anything?" — average amplitude mapped to 0..1.
-    final avg = results.fold<double>(0, (s, r) => s + r.amplitude) /
-        results.length;
-    return (avg * 5.0).clamp(0.0, 1.0);
-  }
+  /// Fallback-Bewertung wenn kein Ton erkannt wurde.
+  /// Gibt 0.0 zurück — ohne echte Note keine Genauigkeit.
+  double _amplitudeFallback(List<PitchResult> results) => 0.0;
 
   List<Note> _parseNotes(String spec) {
     final parts = spec.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty);
@@ -330,8 +342,8 @@ class LessonController extends StateNotifier<LessonState> {
     } else {
       final results = _recentResults.where((r) => r.amplitude > 0.02).toList();
       if (results.isEmpty) {
-        // User pressed start+stop with no sound — give minimal credit for trying.
-        accuracy = state.detectionsCaptured > 0 ? 0.70 : 0.0;
+        // Manuelle Übergabe ohne erkannte Töne — minimale Mindestpunkte wenn User gespielt hat
+        accuracy = state.detectionsCaptured > 0 ? 0.5 : 0.0;
       } else {
         accuracy = _amplitudeFallback(results);
       }

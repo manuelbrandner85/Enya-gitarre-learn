@@ -34,7 +34,8 @@ final progressComparisonProvider =
   final previous =
       await db.getExerciseResultsBetween(userId, twoWeeksAgo, weekAgo);
 
-  if (recent.isEmpty && previous.isEmpty) {
+  // Mindestens 3 Ergebnisse pro Zeitraum für aussagekräftigen Vergleich
+  if (recent.length < 3 || previous.isEmpty) {
     return const ComparisonData.empty();
   }
 

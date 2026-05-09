@@ -10,6 +10,21 @@ import '../music_theory/note.dart';
 import '../utils/constants.dart';
 import 'pitch_detection_isolate.dart';
 
+/// Wird geworfen wenn Mikrofon-Berechtigung verweigert wurde.
+class MicrophonePermissionDeniedException implements Exception {
+  const MicrophonePermissionDeniedException();
+  @override
+  String toString() => 'Mikrofon-Berechtigung wurde verweigert.';
+}
+
+/// Wird geworfen wenn der Audio-Input-Stream nicht gestartet werden konnte.
+class AudioInputException implements Exception {
+  final String message;
+  const AudioInputException(this.message);
+  @override
+  String toString() => 'Audio-Eingabe-Fehler: $message';
+}
+
 enum TuningType {
   standard,
   dropD,
@@ -105,7 +120,6 @@ class PitchDetector {
       StreamController<PitchResult>.broadcast();
 
   bool _isRunning = false;
-  Timer? _simulationTimer;
   final AudioRecorder _recorder = AudioRecorder();
   StreamSubscription<Uint8List>? _audioSub;
   final PitchDetectionIsolate _detectionIsolate = PitchDetectionIsolate();
@@ -128,12 +142,20 @@ class PitchDetector {
     if (_isRunning) return;
     _isRunning = true;
 
-    // Check permission first
-    final granted = await Permission.microphone.isGranted;
-    if (!granted) {
-      debugPrint('PitchDetector: no mic permission — falling back to simulation');
-      _startSimulation();
-      return;
+    // Mikrofon-Berechtigung prüfen und ggf. anfragen
+    final status = await Permission.microphone.status;
+    if (!status.isGranted) {
+      final result = await Permission.microphone.request();
+      if (!result.isGranted) {
+        // Berechtigung verweigert — Stream mit Fehlerzustand schließen
+        if (!_pitchController.isClosed) {
+          _pitchController.addError(
+            MicrophonePermissionDeniedException(),
+          );
+        }
+        _isRunning = false;
+        return;
+      }
     }
 
     try {
@@ -159,8 +181,11 @@ class PitchDetector {
         debugPrint('PitchDetector: isolate unavailable, running on main thread');
       }
     } catch (e) {
-      debugPrint('PitchDetector: startStream failed ($e) — falling back to simulation');
-      _startSimulation();
+      if (kDebugMode) debugPrint('PitchDetector: startStream fehlgeschlagen: $e');
+      if (!_pitchController.isClosed) {
+        _pitchController.addError(AudioInputException(e.toString()));
+      }
+      _isRunning = false;
     }
   }
 
@@ -209,8 +234,6 @@ class PitchDetector {
 
   Future<void> stop() async {
     _isRunning = false;
-    _simulationTimer?.cancel();
-    _simulationTimer = null;
     await _audioSub?.cancel();
     _audioSub = null;
     try {
@@ -347,31 +370,6 @@ class PitchDetector {
       amplitude: amplitude,
       isOnPitch: isOnPitch,
     );
-  }
-
-  // Simulation for development/testing
-  void _startSimulation() {
-    final notes = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'];
-    int noteIdx = 0;
-
-    _simulationTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      if (!_isRunning) return;
-
-      // Cycle through open string notes
-      final noteStr = notes[noteIdx % notes.length];
-      final noteName = noteStr.substring(0, noteStr.length - 1);
-      final octave = int.parse(noteStr[noteStr.length - 1]);
-      final note = Note(name: noteName, octave: octave);
-
-      // Simulate slight detuning
-      final offset = (math.Random().nextDouble() - 0.5) * 20;
-      final simulatedFreq = note.frequency * math.pow(2, offset / 1200);
-
-      final result = _frequencyToResult(simulatedFreq, 0.3);
-      _pitchController.add(result);
-
-      noteIdx++;
-    });
   }
 
   void dispose() {

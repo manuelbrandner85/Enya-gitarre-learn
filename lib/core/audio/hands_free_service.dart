@@ -21,6 +21,9 @@ class HandsFreeService {
       StreamController<HandsFreeCommand>.broadcast();
   final StreamController<String> _recognizedTextController =
       StreamController<String>.broadcast();
+  // Fehler-Stream für Verfügbarkeitsprobleme (z.B. Spracherkennung nicht vorhanden)
+  final StreamController<String> _errorController =
+      StreamController<String>.broadcast();
 
   HandsFreeMode _mode = HandsFreeMode.off;
   bool _isListening = false;
@@ -29,6 +32,8 @@ class HandsFreeService {
 
   Stream<HandsFreeCommand> get commandStream => _commandController.stream;
   Stream<String> get recognizedTextStream => _recognizedTextController.stream;
+  /// Ereignis-Stream für Service-Fehler; mögliche Werte: 'speech_unavailable'
+  Stream<String> get errorStream => _errorController.stream;
   HandsFreeMode get currentMode => _mode;
   bool get isListening => _isListening;
   String get lastRecognizedText => _lastRecognizedText;
@@ -81,7 +86,7 @@ class HandsFreeService {
   Future<void> _startVoice() async {
     final available = await _speech.initialize(
       onError: (e) {
-        debugPrint('HandsFreeService STT-Fehler: $e');
+        if (kDebugMode) debugPrint('HandsFreeService STT-Fehler: $e');
         // Bei Fehler nach kurzer Pause neu versuchen
         _scheduleRestart();
       },
@@ -93,7 +98,9 @@ class HandsFreeService {
       },
     );
     if (!available) {
-      debugPrint('HandsFreeService: speech_to_text nicht verfügbar');
+      if (kDebugMode) debugPrint('HandsFreeService: speech_to_text nicht verfügbar');
+      // Fehler-Ereignis für die UI emittieren
+      _errorController.add('speech_unavailable');
       return;
     }
     await _listen();
@@ -187,5 +194,6 @@ class HandsFreeService {
     await _stopCurrent();
     await _commandController.close();
     await _recognizedTextController.close();
+    await _errorController.close();
   }
 }
